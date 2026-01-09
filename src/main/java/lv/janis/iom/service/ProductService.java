@@ -1,0 +1,98 @@
+package lv.janis.iom.service;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import lv.janis.iom.dto.response.ProductResponse;
+
+import jakarta.persistence.EntityNotFoundException;
+import lv.janis.iom.dto.ProductCreationRequest;
+import lv.janis.iom.dto.ListProductFilter;
+import lv.janis.iom.dto.ProductUpdateRequest;
+import lv.janis.iom.entity.Product;
+import lv.janis.iom.repository.ProductRepository;
+import lv.janis.iom.repository.specification.ProductSpecifications;
+import org.springframework.transaction.annotation.Transactional;
+
+
+@Service
+public class ProductService {
+
+    private final ProductRepository productRepository;
+
+    public ProductService(ProductRepository productRepository) {
+        this.productRepository = productRepository;
+    }
+
+    @Transactional
+    public Product createProduct(ProductCreationRequest request) {
+        if (productRepository.existsBySku(request.getSku())) {
+            throw new IllegalStateException("Product with SKU " + request.getSku() + " already exists.");
+        }
+        if (productRepository.existsByName(request.getName())) {
+            throw new IllegalStateException("Product with name " + request.getName() + " already exists.");
+        }
+
+        Product product = Product.create(
+            request.getSku(),
+            request.getName(),
+            request.getDescription(),
+            request.getPrice()
+        );
+        return productRepository.save(product);
+    }
+
+    @Transactional
+    public Product updateProduct(Long id, ProductUpdateRequest request) {
+        boolean hasUpdates =
+        request.getName() != null ||
+        request.getDescription() != null ||
+        request.getPrice() != null;
+
+        if (!hasUpdates) {
+            throw new IllegalStateException("At least one field must be provided for update");
+        }
+        
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found."));
+        
+        if (request.getName() != null) {
+            if (!request.getName().equals(product.getName())
+                && productRepository.existsByName(request.getName())) {
+                throw new IllegalStateException("Product with name " + request.getName() + " already exists.");
+            }
+            product.rename(request.getName());
+        }
+        if (request.getDescription() != null) {
+            product.setDescription(request.getDescription());
+        }
+        if (request.getPrice() != null) {
+            product.updatePrice(request.getPrice());
+        }
+
+        return productRepository.save(product);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> listProducts(ListProductFilter filter, Pageable pageable) {
+        ListProductFilter safeFilter = filter == null ? new ListProductFilter() : filter;
+        Pageable safePageable = capPageSize(pageable, 100);
+        Specification<Product> spec = Specification
+                .where(ProductSpecifications.search(safeFilter.getQuery()))
+                .and(ProductSpecifications.skuEquals(safeFilter.getSku()))
+                .and(ProductSpecifications.priceGte(safeFilter.getMinPrice()))
+                .and(ProductSpecifications.priceLte(safeFilter.getMaxPrice()));
+        return productRepository.findAll(spec, safePageable).map(ProductResponse::from);
+    }
+
+    private Pageable capPageSize(Pageable pageable, int maxSize) {
+        if (pageable.getPageSize() > maxSize) {
+            return PageRequest.of(pageable.getPageNumber(), maxSize, pageable.getSort());
+        }
+        return pageable;
+    }
+
+}
+    
