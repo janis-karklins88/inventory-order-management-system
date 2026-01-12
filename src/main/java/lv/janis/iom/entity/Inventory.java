@@ -1,8 +1,15 @@
 package lv.janis.iom.entity;
 
+import java.time.Instant;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import jakarta.persistence.*;
 
 @Entity(name = "Inventory")
+@EntityListeners(AuditingEntityListener.class)
 @Table (
     name = "inventory",
     uniqueConstraints = {
@@ -24,6 +31,23 @@ public class Inventory {
 
     @Column(nullable = false)
     private Integer reservedQuantity;
+
+    @Version
+    private Long version;
+
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    private Instant updatedAt;
+
+    @Column(nullable = false)
+    private int reorderLevel = 0;
+
+    @Column(nullable = false)
+    private int reorderQuantity = 0;
 
     protected Inventory() {
     }
@@ -47,16 +71,33 @@ public class Inventory {
         return product;
     }
 
-    public Integer getQuantity() {
+    public int getQuantity() {
         return quantity;
     }
 
-    public Integer getReservedQuantity() {
+    public int getReservedQuantity() {
         return reservedQuantity;
     }
 
+    public int getReorderLevel() {
+        return reorderLevel;
+    }
+
+    public void setReorderLevel(int reorderLevel) {
+        if (reorderLevel < 0) throw new IllegalArgumentException("reorderLevel cannot be negative");
+        this.reorderLevel = reorderLevel;
+    }
+    public int getReorderQuantity() {
+        return reorderQuantity;
+    }
+
+    public void setReorderQuantity(int reorderQuantity) {
+        if (reorderQuantity < 0) throw new IllegalArgumentException("reorderQuantity cannot be negative");
+        this.reorderQuantity = reorderQuantity;
+    }
+
     @Transient
-    public Integer getAvailableQuantity() {
+    public int getAvailableQuantity() {
         return quantity - reservedQuantity;
     }
 
