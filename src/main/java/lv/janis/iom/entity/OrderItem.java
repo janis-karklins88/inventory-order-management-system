@@ -73,4 +73,9 @@ public class OrderItem {
     public BigDecimal getTotalPrice() {
         return priceAtOrderTime.multiply(BigDecimal.valueOf(quantity));
     }
+
+    public void setQuantity(Integer quantity) {
+        if (quantity == null || quantity <= 0) throw new IllegalArgumentException("quantity must be positive");
+        this.quantity = quantity;
+    }
 }

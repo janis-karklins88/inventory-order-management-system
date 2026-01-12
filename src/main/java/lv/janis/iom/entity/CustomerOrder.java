@@ -112,22 +112,27 @@ public class CustomerOrder {
         this.totalAmount = sum;
     }
 
-    public void confirm() {
-        if (status != OrderStatus.CREATED) {
-            throw new IllegalStateException("Only orders in CREATED status can be confirmed");
-        }
-        if (items.isEmpty()) {
-            throw new IllegalStateException("Cannot confirm an order with no items");
-        }
-        this.status = OrderStatus.CONFIRMED;
-    }
-    public void cancel() {
-        if (status != OrderStatus.CREATED && status != OrderStatus.CONFIRMED) {
-            throw new IllegalStateException("Only orders in CREATED or CONFIRMED status can be cancelled");
-        }
-        this.status = OrderStatus.CANCELLED;
+    public void markProcessing() {
+        if (status != OrderStatus.CREATED) throw new IllegalStateException("Only CREATED can go to PROCESSING");
+        status = OrderStatus.PROCESSING;
     }
 
+    public void markShipped() {
+        if (status != OrderStatus.PROCESSING) throw new IllegalStateException("Only PROCESSING can go to SHIPPED");
+        status = OrderStatus.SHIPPED;
+    }
+
+    public void markDelivered() {
+        if (status != OrderStatus.SHIPPED) throw new IllegalStateException("Only SHIPPED can go to DELIVERED");
+        status = OrderStatus.DELIVERED;
+    }
+
+    public void markCancelled() {
+        if (status == OrderStatus.SHIPPED || status == OrderStatus.DELIVERED)
+            throw new IllegalStateException("Cannot cancel after shipped");
+        status = OrderStatus.CANCELLED;
+    }
+    
     private void ensureModifiable() {
         if (status != OrderStatus.CREATED) {
             throw new IllegalStateException("Cannot modify order unless it is in CREATED status");

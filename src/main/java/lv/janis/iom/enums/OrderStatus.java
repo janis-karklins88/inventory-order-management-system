@@ -1,9 +1,8 @@
 package lv.janis.iom.enums;
 public enum OrderStatus {
-    CREATED,
-    PROCESSING,
-    CONFIRMED,
-    SHIPPED,
-    DELIVERED,
-    CANCELLED
+    CREATED,        // draft, editable, no inventory
+    PROCESSING,     // inventory reserved, payment OK, waiting for shipping
+    SHIPPED,        // inventory deducted
+    DELIVERED,      // completed
+    CANCELLED       // terminal
 }
