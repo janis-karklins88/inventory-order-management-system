@@ -1,13 +1,20 @@
 package lv.janis.iom.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
+import lv.janis.iom.dto.filters.CustomerOrderFilter;
+import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
 import lv.janis.iom.enums.OrderStatus;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.ProductRepository;
+import lv.janis.iom.repository.specification.OrderSpecifications;
 
 @Service
 public class OrderService {
@@ -149,10 +156,30 @@ public class OrderService {
             .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
     }
 
+    @Transactional(readOnly = true)
+    public Page<CustomerOrderResponse> getCustomerOrders(CustomerOrderFilter filter, Pageable pageable) {
+        var safeFilter = filter != null ? filter : new CustomerOrderFilter();
+        var safePageable = capPageSize(pageable, 100);
+        var specs = Specification.where(
+            OrderSpecifications.orderStatusEquals(safeFilter.getStatus())
+        );
+
+        return customerOrderRepository.findAll(specs, safePageable).map(CustomerOrderResponse::from);
+    }
+    
+
+
     private static void requireId(Long id, String name) {
         if (id == null) {
             throw new IllegalArgumentException(name + " is required");
         }
+    }
+
+    private Pageable capPageSize(Pageable pageable, int maxSize) {
+        if (pageable.getPageSize() > maxSize) {
+            return PageRequest.of(pageable.getPageNumber(), maxSize, pageable.getSort());
+        }
+        return pageable;
     }
 
     }

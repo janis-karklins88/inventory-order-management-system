@@ -9,6 +9,7 @@ import lv.janis.iom.entity.Product;
 public final class ProductSpecifications {
     private ProductSpecifications() {
     }
+    
     public static Specification<Product> search(String q) {
         return (root, query, cb) -> {
             if (q == null || q.isBlank()) return cb.conjunction();

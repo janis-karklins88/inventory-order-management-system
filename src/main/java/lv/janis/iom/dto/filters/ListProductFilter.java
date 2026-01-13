@@ -1,4 +1,4 @@
-package lv.janis.iom.dto;
+package lv.janis.iom.dto.filters;
 
 import java.math.BigDecimal;
 

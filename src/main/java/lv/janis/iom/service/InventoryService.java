@@ -1,12 +1,19 @@
 package lv.janis.iom.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
+import lv.janis.iom.dto.filters.InventoryFilter;
+import lv.janis.iom.dto.response.InventoryResponse;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.Product;
 import lv.janis.iom.repository.InventoryRepository;
 import lv.janis.iom.repository.ProductRepository;
+import lv.janis.iom.repository.specification.InventorySpecifications;
 
 @Service
 @Transactional
@@ -95,6 +102,20 @@ public class InventoryService {
         return inventory.getAvailableQuantity();
     }
 
+    public Page<InventoryResponse> getInventory(InventoryFilter filter, Pageable pageable) {
+        var safePageable = capPageSize(pageable, 100);
+        var safeFilter = filter != null ? filter : new InventoryFilter();
+        var spec = Specification.where(
+            InventorySpecifications.search(safeFilter.getQ())
+                .and(InventorySpecifications.quantityGte(safeFilter.getMinQuantity()))
+                .and(InventorySpecifications.quantityLte(safeFilter.getMaxQuantity()))
+                .and(InventorySpecifications.availableGte(safeFilter.getMinAvailable()))
+                .and(InventorySpecifications.availableLte(safeFilter.getMaxAvailable()))
+                .and(InventorySpecifications.stockStatus(safeFilter.getStockStatus()))
+        );
+        return inventoryRepository.findAll(spec, safePageable).map(InventoryResponse::from);
+    }
+
     private static void requireProductId(Long productId) {
         if (productId == null) {
             throw new IllegalArgumentException("productId is required");
@@ -105,6 +126,13 @@ public class InventoryService {
         if (quantity == null) {
             throw new IllegalArgumentException(paramName + " is required");
         }
+    }
+
+    private Pageable capPageSize(Pageable pageable, int maxSize) {
+        if (pageable.getPageSize() > maxSize) {
+            return PageRequest.of(pageable.getPageNumber(), maxSize, pageable.getSort());
+        }
+        return pageable;
     }
 
 

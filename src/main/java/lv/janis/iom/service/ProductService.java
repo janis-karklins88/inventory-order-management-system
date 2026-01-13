@@ -9,8 +9,8 @@ import lv.janis.iom.dto.response.ProductResponse;
 
 import jakarta.persistence.EntityNotFoundException;
 import lv.janis.iom.dto.ProductCreationRequest;
-import lv.janis.iom.dto.ListProductFilter;
 import lv.janis.iom.dto.ProductUpdateRequest;
+import lv.janis.iom.dto.filters.ListProductFilter;
 import lv.janis.iom.entity.Product;
 import lv.janis.iom.repository.ProductRepository;
 import lv.janis.iom.repository.specification.ProductSpecifications;
