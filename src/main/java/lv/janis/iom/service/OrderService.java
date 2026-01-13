@@ -162,6 +162,8 @@ public class OrderService {
         var safePageable = capPageSize(pageable, 100);
         var specs = Specification.where(
             OrderSpecifications.orderStatusEquals(safeFilter.getStatus())
+            .and(OrderSpecifications.createdBetween(safeFilter.getCreatedAfter(), safeFilter.getCreatedBefore()))
+            .and(OrderSpecifications.updatedBetween(safeFilter.getUpdatedAfter(), safeFilter.getUpdatedBefore()))
         );
 
         return customerOrderRepository.findAll(specs, safePageable).map(CustomerOrderResponse::from);

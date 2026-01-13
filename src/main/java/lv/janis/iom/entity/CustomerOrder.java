@@ -82,6 +82,14 @@ public class CustomerOrder {
         return Collections.unmodifiableList(items);
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
     public void addItem(OrderItem item) {
         if (item == null) throw new IllegalArgumentException("item required");
         ensureModifiable();
