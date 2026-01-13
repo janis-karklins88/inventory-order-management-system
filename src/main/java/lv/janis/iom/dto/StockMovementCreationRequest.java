@@ -1,6 +1,6 @@
 package lv.janis.iom.dto;
 
-import jakarta.persistence.criteria.CriteriaBuilder.In;
+
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.enums.MovementType;
 
@@ -10,6 +10,16 @@ public class StockMovementCreationRequest {
     private int delta;
     private String reason;
     private Long orderId;
+
+    protected StockMovementCreationRequest() {}
+
+    public StockMovementCreationRequest(Inventory inventory, MovementType movementType, int delta, String reason, Long orderId) {
+        this.inventory = inventory;
+        this.movementType = movementType;
+        this.delta = delta;
+        this.reason = reason;
+        this.orderId = orderId;
+    }
 
     public Inventory getInventory() {
         return inventory;

@@ -7,10 +7,13 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
+import lv.janis.iom.dto.StockMovementCreationRequest;
 import lv.janis.iom.dto.filters.InventoryFilter;
 import lv.janis.iom.dto.response.InventoryResponse;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.Product;
+import lv.janis.iom.entity.StockMovement;
+import lv.janis.iom.enums.MovementType;
 import lv.janis.iom.repository.InventoryRepository;
 import lv.janis.iom.repository.ProductRepository;
 import lv.janis.iom.repository.specification.InventorySpecifications;
@@ -21,10 +24,12 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final ProductRepository productRepository;
+    private final StockMovementService stockMovementService;
 
-    public InventoryService(InventoryRepository inventoryRepository, ProductRepository productRepository) {
+    public InventoryService(InventoryRepository inventoryRepository, ProductRepository productRepository, StockMovementService stockMovementService) {
         this.inventoryRepository = inventoryRepository;
         this.productRepository = productRepository;
+        this.stockMovementService = stockMovementService;
     }
 
     public Inventory createInventory(Long productId) {
@@ -116,6 +121,47 @@ public class InventoryService {
         return inventoryRepository.findAll(spec, safePageable).map(InventoryResponse::from);
     }
 
+    public Inventory adjustInventoryQuantity(Long productId, Integer delta, String reason) {
+        requireProductId(productId);
+        if (delta == null) {
+            throw new IllegalArgumentException("delta is required");
+        }
+        var inventory = inventoryRepository.findByProductId(productId)
+            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+        if(reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("reason is required");
+        }
+        if(delta > 0) {
+            inventory.increaseQuantity(delta);
+            stockMovementService.createStockMovement(
+                new StockMovementCreationRequest(
+                    inventory,
+                    MovementType.MANUAL_ADJUSTMENT,
+                    delta,
+                    reason,
+                    null
+                )
+            );
+        }
+        else if(delta < 0) {
+            int absDelta = Math.abs(delta);
+            inventory.decreaseQuantity(absDelta);
+            stockMovementService.createStockMovement(
+                new StockMovementCreationRequest(
+                    inventory,
+                    MovementType.MANUAL_ADJUSTMENT,
+                    absDelta,
+                    reason,
+                    null
+                )
+            );
+        }
+        else {
+            throw new IllegalArgumentException("delta cannot be zero");
+        }
+        return inventoryRepository.save(inventory);
+    }
+
     private static void requireProductId(Long productId) {
         if (productId == null) {
             throw new IllegalArgumentException("productId is required");
@@ -125,6 +171,9 @@ public class InventoryService {
     private static void requireQuantity(Integer quantity, String paramName) {
         if (quantity == null) {
             throw new IllegalArgumentException(paramName + " is required");
+        }
+        if (quantity <= 0) {
+            throw new IllegalArgumentException(paramName + " must be positive");
         }
     }
 

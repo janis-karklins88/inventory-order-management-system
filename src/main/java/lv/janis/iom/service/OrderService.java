@@ -7,10 +7,13 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
+
+import lv.janis.iom.dto.StockMovementCreationRequest;
 import lv.janis.iom.dto.filters.CustomerOrderFilter;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
+import lv.janis.iom.enums.MovementType;
 import lv.janis.iom.enums.OrderStatus;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.ProductRepository;
@@ -22,17 +25,20 @@ public class OrderService {
     private final CustomerOrderRepository customerOrderRepository;
     private final InventoryService inventoryService;
     private final ProductRepository productRepository;
+    private final StockMovementService stockMovementService;
 
 
     public OrderService(
         CustomerOrderRepository customerOrderRepository,
         ProductRepository productRepository,
-        InventoryService inventoryService
+        InventoryService inventoryService,
+        StockMovementService stockMovementService
 
     ) {
         this.customerOrderRepository = customerOrderRepository;
         this.productRepository = productRepository;
         this.inventoryService = inventoryService;
+        this.stockMovementService = stockMovementService;
 
     }
 
@@ -92,10 +98,21 @@ public class OrderService {
         
         for (var item : order.getItems()) {
             inventoryService.reserveStock(item.getProduct().getId(), item.getQuantity());
-            }
-            order.markProcessing();
-            return order;
+            var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
+            stockMovementService.createStockMovement(
+                new StockMovementCreationRequest(
+                    inventory,
+                    MovementType.ORDER_RESERVED,
+                    item.getQuantity(),
+                    "Order status changed to PROCESSING",
+                    orderId
+                )
+            );
+        }
+        order.markProcessing();
+        return order;
     }
+
 
         @Transactional
         public CustomerOrder statusShipped(Long orderId) {
@@ -109,6 +126,16 @@ public class OrderService {
 
         for (var item : order.getItems()) {
             inventoryService.fulfillReservedQuantity(item.getProduct().getId(), item.getQuantity());
+            var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
+            stockMovementService.createStockMovement(
+                new StockMovementCreationRequest(
+                    inventory,
+                    MovementType.ORDER_FULFILLED,
+                    item.getQuantity(),
+                    "Order status changed to SHIPPED",
+                    orderId
+                )
+            );
         }
         order.markShipped();
         return order;
@@ -143,6 +170,16 @@ public class OrderService {
         if (order.getStatus() == OrderStatus.PROCESSING) {
             for (var item : order.getItems()) {
                 inventoryService.cancelReservedQuantity(item.getProduct().getId(), item.getQuantity());
+                var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
+                stockMovementService.createStockMovement(
+                    new StockMovementCreationRequest(
+                        inventory,
+                        MovementType.ORDER_RELEASED,
+                        item.getQuantity(),
+                        "Order status changed to CANCELLED",
+                        orderId
+                    )
+                );
             }
         }
         order.markCancelled();
