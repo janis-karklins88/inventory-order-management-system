@@ -187,6 +187,33 @@ public class OrderService {
     }
 
     @Transactional
+    public CustomerOrder statusReturned(Long orderId) {
+        requireId(orderId, "orderId");
+        var order = customerOrderRepository.findById(orderId)
+            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new IllegalStateException("Only orders in DELIVERED status can be moved to RETURNED");
+        }
+
+        for (var item : order.getItems()) {
+            inventoryService.addStock(item.getProduct().getId(), item.getQuantity());
+            var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
+            stockMovementService.createStockMovement(
+                new StockMovementCreationRequest(
+                    inventory,
+                    MovementType.ORDER_RETURNED,
+                    item.getQuantity(),
+                    "Order status changed to RETURNED",
+                    orderId
+                )
+            );
+        }
+        order.markReturned();
+        return order;
+    }
+
+    @Transactional
     public CustomerOrder getCustomerOrderById(Long orderId) {
         requireId(orderId, "orderId");
         return customerOrderRepository.findById(orderId)

@@ -140,6 +140,11 @@ public class CustomerOrder {
             throw new IllegalStateException("Cannot cancel after shipped");
         status = OrderStatus.CANCELLED;
     }
+
+    public void markReturned() {
+        if (status != OrderStatus.DELIVERED) throw new IllegalStateException("Only DELIVERED can go to RETURNED");
+        status = OrderStatus.RETURNED;
+    }
     
     private void ensureModifiable() {
         if (status != OrderStatus.CREATED) {
