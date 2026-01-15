@@ -150,7 +150,7 @@ public class InventoryService {
                 new StockMovementCreationRequest(
                     inventory,
                     MovementType.MANUAL_ADJUSTMENT,
-                    absDelta,
+                    delta,
                     reason,
                     null
                 )

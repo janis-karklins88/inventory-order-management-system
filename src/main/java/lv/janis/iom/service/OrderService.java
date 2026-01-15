@@ -103,7 +103,7 @@ public class OrderService {
                 new StockMovementCreationRequest(
                     inventory,
                     MovementType.ORDER_RESERVED,
-                    item.getQuantity(),
+                    -item.getQuantity(),
                     "Order status changed to PROCESSING",
                     orderId
                 )
@@ -131,7 +131,7 @@ public class OrderService {
                 new StockMovementCreationRequest(
                     inventory,
                     MovementType.ORDER_FULFILLED,
-                    item.getQuantity(),
+                    -item.getQuantity(),
                     "Order status changed to SHIPPED",
                     orderId
                 )
