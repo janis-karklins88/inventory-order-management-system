@@ -7,8 +7,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
-import lv.janis.iom.dto.StockMovementCreationRequest;
 import lv.janis.iom.dto.filters.InventoryFilter;
+import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.InventoryResponse;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.Product;
@@ -128,11 +128,13 @@ public class InventoryService {
         }
         var inventory = inventoryRepository.findByProductId(productId)
             .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+
         if(reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("reason is required");
         }
         if(delta > 0) {
             inventory.increaseQuantity(delta);
+            updateLowQuantityFlag(inventory);
             stockMovementService.createStockMovement(
                 new StockMovementCreationRequest(
                     inventory,
@@ -146,6 +148,7 @@ public class InventoryService {
         else if(delta < 0) {
             int absDelta = Math.abs(delta);
             inventory.decreaseQuantity(absDelta);
+            updateLowQuantityFlag(inventory);
             stockMovementService.createStockMovement(
                 new StockMovementCreationRequest(
                     inventory,
@@ -160,6 +163,20 @@ public class InventoryService {
             throw new IllegalArgumentException("delta cannot be zero");
         }
         return inventoryRepository.save(inventory);
+    }
+
+    public void updateLowQuantityFlag(Inventory inventory) {
+        if (inventory == null) {
+            throw new IllegalArgumentException("inventory is required");
+        }
+        int available = inventory.getAvailableQuantity();
+        if (inventory.isLowQuantity()) {
+            if (available > inventory.getClearLowQuantity()) {
+                inventory.setIsLowQuantity(false);
+            }
+        } else if (available <= inventory.getReorderLevel()) {
+            inventory.setIsLowQuantity(true);
+        }
     }
 
     private static void requireProductId(Long productId) {

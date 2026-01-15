@@ -1,4 +1,4 @@
-package lv.janis.iom.dto;
+package lv.janis.iom.dto.requests;
 
 import java.math.BigDecimal;
 

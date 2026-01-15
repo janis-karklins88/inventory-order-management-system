@@ -47,7 +47,10 @@ public class Inventory {
     private int reorderLevel = 0;
 
     @Column(nullable = false)
-    private int reorderQuantity = 0;
+    private int clearLowQuantity = 0;
+
+    @Column(nullable = false)
+    private boolean isLowQuantity = false;
 
     protected Inventory() {
     }
@@ -83,18 +86,28 @@ public class Inventory {
         return reorderLevel;
     }
 
+    public int getClearLowQuantity() {
+        return clearLowQuantity;
+    }
+
+    public void setClearLowQuantity(int clearLowQuantity) {
+        if (clearLowQuantity < 0) throw new IllegalArgumentException("clearLowQuantity cannot be negative");
+        this.clearLowQuantity = clearLowQuantity;
+    }
+
+    public boolean isLowQuantity() {
+        return isLowQuantity;
+    }
+
+    public void setIsLowQuantity(boolean isLowQuantity) {
+        this.isLowQuantity = isLowQuantity;
+    }
+
     public void setReorderLevel(int reorderLevel) {
         if (reorderLevel < 0) throw new IllegalArgumentException("reorderLevel cannot be negative");
         this.reorderLevel = reorderLevel;
     }
-    public int getReorderQuantity() {
-        return reorderQuantity;
-    }
 
-    public void setReorderQuantity(int reorderQuantity) {
-        if (reorderQuantity < 0) throw new IllegalArgumentException("reorderQuantity cannot be negative");
-        this.reorderQuantity = reorderQuantity;
-    }
 
     @Transient
     public int getAvailableQuantity() {

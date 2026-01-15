@@ -10,7 +10,8 @@ public class InventoryResponse {
     private Product product;
     private Integer reservedQuantity;
     private Integer reorderLevel;
-    private Integer reorderQuantity;
+    private Integer clearLowQuantity;
+    private Boolean isLowQuantity;
 
     public InventoryResponse() {
     }
@@ -22,7 +23,8 @@ public class InventoryResponse {
         Product product,
         Integer reservedQuantity,
         Integer reorderLevel,
-        Integer reorderQuantity
+        Integer clearLowQuantity,
+        Boolean isLowQuantity
     ) {
         this.id = id;
         this.name = name;
@@ -30,7 +32,8 @@ public class InventoryResponse {
         this.product = product;
         this.reservedQuantity = reservedQuantity;
         this.reorderLevel = reorderLevel;
-        this.reorderQuantity = reorderQuantity;
+        this.clearLowQuantity = clearLowQuantity;
+        this.isLowQuantity = isLowQuantity;
     }
 
     public Long getId() {
@@ -74,11 +77,17 @@ public class InventoryResponse {
     public void setReorderLevel(Integer reorderLevel) {
         this.reorderLevel = reorderLevel;
     }
-    public Integer getReorderQuantity() {
-        return reorderQuantity;
+    public Integer getClearLowQuantity() {
+        return clearLowQuantity;
     }
-    public void setReorderQuantity(Integer reorderQuantity) {
-        this.reorderQuantity = reorderQuantity;
+    public void setClearLowQuantity(Integer clearLowQuantity) {
+        this.clearLowQuantity = clearLowQuantity;
+    }
+    public Boolean getIsLowQuantity() {
+        return isLowQuantity;
+    }
+    public void setIsLowQuantity(Boolean isLowQuantity) {
+        this.isLowQuantity = isLowQuantity;
     }
 
     public static InventoryResponse from(Inventory inventory) {
@@ -92,7 +101,8 @@ public class InventoryResponse {
             product,
             inventory.getReservedQuantity(),
             inventory.getReorderLevel(),
-            inventory.getReorderQuantity()
+            inventory.getClearLowQuantity(),
+            inventory.isLowQuantity()
         );
     }
 

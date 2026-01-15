@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
 
-import lv.janis.iom.dto.StockMovementCreationRequest;
 import lv.janis.iom.dto.filters.CustomerOrderFilter;
+import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
@@ -97,8 +97,8 @@ public class OrderService {
 
         
         for (var item : order.getItems()) {
-            inventoryService.reserveStock(item.getProduct().getId(), item.getQuantity());
             var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
+            inventoryService.reserveStock(item.getProduct().getId(), item.getQuantity());
             stockMovementService.createStockMovement(
                 new StockMovementCreationRequest(
                     inventory,
@@ -108,6 +108,7 @@ public class OrderService {
                     orderId
                 )
             );
+            inventoryService.updateLowQuantityFlag(inventory);
         }
         order.markProcessing();
         return order;
@@ -180,6 +181,7 @@ public class OrderService {
                         orderId
                     )
                 );
+                inventoryService.updateLowQuantityFlag(inventory);
             }
         }
         order.markCancelled();
@@ -208,6 +210,7 @@ public class OrderService {
                     orderId
                 )
             );
+            inventoryService.updateLowQuantityFlag(inventory);
         }
         order.markReturned();
         return order;

@@ -1,7 +1,7 @@
 package lv.janis.iom.service;
 
-import lv.janis.iom.dto.StockMovementCreationRequest;
 import lv.janis.iom.dto.filters.StockMovmentFilter;
+import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.StockMovementResponse;
 import lv.janis.iom.entity.StockMovement;
 import lv.janis.iom.repository.StockMovementRepository;
