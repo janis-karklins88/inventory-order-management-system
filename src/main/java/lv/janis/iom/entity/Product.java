@@ -48,6 +48,9 @@ public class Product {
     @Version
     private Long version;
 
+    @Column(nullable = false)
+    private boolean isDeleted = false;
+
     protected Product() {
     }
 
@@ -93,6 +96,17 @@ public class Product {
         return updatedAt;
     }
 
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public void deactivate() {
+        this.isDeleted = true;
+    }
+
+    public void activate() {
+        this.isDeleted = false;
+    }
 
     public void setDescription(String description) {
         this.description = description;

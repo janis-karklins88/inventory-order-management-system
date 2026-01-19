@@ -75,6 +75,22 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    @Transactional
+    public Product deactivateProduct(Long id) {
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found."));
+        product.deactivate();
+        return productRepository.save(product);
+    }
+
+    @Transactional
+    public Product activateProduct(Long id) {
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found."));
+        product.activate();
+        return productRepository.save(product);
+    }
+
     @Transactional(readOnly = true)
     public Page<ProductResponse> listProducts(ListProductFilter filter, Pageable pageable) {
         ListProductFilter safeFilter = filter == null ? new ListProductFilter() : filter;
@@ -83,7 +99,15 @@ public class ProductService {
                 .where(ProductSpecifications.search(safeFilter.getQuery()))
                 .and(ProductSpecifications.skuEquals(safeFilter.getSku()))
                 .and(ProductSpecifications.priceGte(safeFilter.getMinPrice()))
-                .and(ProductSpecifications.priceLte(safeFilter.getMaxPrice()));
+                .and(ProductSpecifications.priceLte(safeFilter.getMaxPrice()))
+                .and(ProductSpecifications.notDeleted());
+        return productRepository.findAll(spec, safePageable).map(ProductResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> listDeletedProducts(Pageable pageable) {
+        Pageable safePageable = capPageSize(pageable, 100);
+        Specification<Product> spec = Specification.where(ProductSpecifications.deletedOnly());
         return productRepository.findAll(spec, safePageable).map(ProductResponse::from);
     }
 

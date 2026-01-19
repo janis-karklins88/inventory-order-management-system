@@ -1,5 +1,6 @@
 package lv.janis.iom.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -7,8 +8,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.transaction.Transactional;
 import lv.janis.iom.dto.filters.InventoryFilter;
 import lv.janis.iom.dto.requests.InventoryCreationRequest;
 import lv.janis.iom.dto.requests.StockMovementCreationRequest;
@@ -159,8 +160,14 @@ public class InventoryService {
                 .and(InventorySpecifications.availableGte(safeFilter.getMinAvailable()))
                 .and(InventorySpecifications.availableLte(safeFilter.getMaxAvailable()))
                 .and(InventorySpecifications.stockStatus(safeFilter.getStockStatus()))
+                .and(InventorySpecifications.productNotDeleted())
         );
         return inventoryRepository.findAll(spec, safePageable).map(InventoryResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Inventory> listInStockAllInventory() {
+    return inventoryRepository.findAllInStockWithProduct();
     }
 
     public Inventory adjustInventoryQuantity(Long productId, Integer delta, String reason) {

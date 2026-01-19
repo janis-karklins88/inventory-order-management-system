@@ -41,4 +41,12 @@ public final class ProductSpecifications {
             return cb.equal(root.get("sku"), sku.trim());
         };
     }
+
+    public static Specification<Product> notDeleted() {
+        return (root, query, cb) -> cb.isFalse(root.get("isDeleted"));
+    }
+
+    public static Specification<Product> deletedOnly() {
+        return (root, query, cb) -> cb.isTrue(root.get("isDeleted"));
+    }
 }

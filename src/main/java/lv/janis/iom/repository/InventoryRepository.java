@@ -1,5 +1,6 @@
 package lv.janis.iom.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,5 +20,13 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long>, Jpa
     Optional<Inventory> findByProductIdForUpdate(@Param("productId") Long productId);
 
     boolean existsByProductId(Long productId);
+
+    @Query("""
+    select i
+    from Inventory i
+    join fetch i.product p
+    where i.quantity > 0
+    """)
+    List<Inventory> findAllInStockWithProduct();
     
 }

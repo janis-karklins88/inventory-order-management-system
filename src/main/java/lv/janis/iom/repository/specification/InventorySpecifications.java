@@ -68,6 +68,13 @@ public final class InventorySpecifications {
         };
     }
 
+    public static Specification<Inventory> productNotDeleted() {
+        return (root, query, cb) -> {
+            var product = root.join("product", JoinType.LEFT);
+            return cb.isFalse(product.get("isDeleted"));
+        };
+    }
+
     private static Expression<Number> availableExpression(
         jakarta.persistence.criteria.Root<Inventory> root,
         jakarta.persistence.criteria.CriteriaBuilder cb

@@ -168,4 +168,5 @@ public class Inventory {
         this.quantity -= amount;
     }
 
+ 
 }
