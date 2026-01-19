@@ -13,10 +13,12 @@ import lv.janis.iom.dto.filters.InventoryFilter;
 import lv.janis.iom.dto.requests.InventoryCreationRequest;
 import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.InventoryResponse;
+import lv.janis.iom.entity.Alert;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.NotificationTask;
 import lv.janis.iom.entity.Product;
 import lv.janis.iom.enums.MovementType;
+import lv.janis.iom.repository.AlertRepository;
 import lv.janis.iom.repository.InventoryRepository;
 import lv.janis.iom.repository.NotificationTaskRepository;
 import lv.janis.iom.repository.ProductRepository;
@@ -26,21 +28,25 @@ import lv.janis.iom.repository.specification.InventorySpecifications;
 @Transactional
 public class InventoryService {
 
+    private final AlertRepository alertRepository;
+
     private final InventoryRepository inventoryRepository;
     private final ProductRepository productRepository;
     private final StockMovementService stockMovementService;
     private final NotificationTaskRepository notificationTaskRepository;
+
 
     public InventoryService(
         InventoryRepository inventoryRepository, 
         ProductRepository productRepository, 
         StockMovementService stockMovementService, 
         NotificationTaskRepository notificationTaskRepository
-    ) {
+    , AlertRepository alertRepository) {
         this.inventoryRepository = inventoryRepository;
         this.productRepository = productRepository;
         this.stockMovementService = stockMovementService;
         this.notificationTaskRepository = notificationTaskRepository;
+        this.alertRepository = alertRepository;
     }
 
     public Inventory createInventory(Long productId, InventoryCreationRequest request) {
@@ -97,7 +103,7 @@ public class InventoryService {
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.decreaseQuantity(quantityToReduce);
         updateLowQuantityFlag(inventory);
-        createLowStockTaskIfTriggered(inventory, wasLowStock);
+        lowStockCheck(inventory, wasLowStock);
         return inventoryRepository.save(inventory);
     }
 
@@ -109,7 +115,7 @@ public class InventoryService {
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.reserveQuantity(quantityToReserve);
         updateLowQuantityFlag(inventory);
-        createLowStockTaskIfTriggered(inventory, wasLowStock);
+        lowStockCheck(inventory, wasLowStock);
         return inventoryRepository.save(inventory);
     }
 
@@ -131,7 +137,7 @@ public class InventoryService {
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.deductReservedQuantity(quantityToReduce);
         updateLowQuantityFlag(inventory);
-        createLowStockTaskIfTriggered(inventory, wasLowStock);
+        lowStockCheck(inventory, wasLowStock);
         return inventoryRepository.save(inventory);
     }
 
@@ -186,7 +192,7 @@ public class InventoryService {
             boolean wasLowStock = inventory.isLowQuantity();
             inventory.decreaseQuantity(absDelta);
             updateLowQuantityFlag(inventory);
-            createLowStockTaskIfTriggered(inventory, wasLowStock);
+            lowStockCheck(inventory, wasLowStock);
             stockMovementService.createStockMovement(
                 new StockMovementCreationRequest(
                     inventory,
@@ -217,11 +223,13 @@ public class InventoryService {
         }
     }
 
-    private void createLowStockTaskIfTriggered(Inventory inventory, boolean wasLowStock) {
+    public void lowStockCheck(Inventory inventory, boolean wasLowStock) {
         boolean isLowStockNow = inventory.isLowQuantity();
         if (!wasLowStock && isLowStockNow) {
             var newTask = new NotificationTask(inventory);
+            var newAlert = Alert.createLowStockAlert(inventory);
             notificationTaskRepository.save(newTask);
+            alertRepository.save(newAlert);
         }
     }
 
