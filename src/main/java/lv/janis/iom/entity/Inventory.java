@@ -61,9 +61,25 @@ public class Inventory {
         this.reservedQuantity = 0;
     }
 
+    private Inventory(Product product, int quantity, int reorderLevel, int clearLowQuantity) {
+        if (product == null) throw new IllegalArgumentException("product required");
+        if (quantity < 0) throw new IllegalArgumentException("quantity cannot be negative");
+        if (reorderLevel < 0) throw new IllegalArgumentException("reorderLevel cannot be negative");
+        if (clearLowQuantity < 0) throw new IllegalArgumentException("clearLowQuantity cannot be negative");
+        this.product = product;
+        this.quantity = quantity;
+        this.reservedQuantity = 0;
+        this.reorderLevel = reorderLevel;
+        this.clearLowQuantity = clearLowQuantity;
+    }
+
     public static Inventory createFor(Product product) {
         if (product == null) throw new IllegalArgumentException("product required");
         return new Inventory(product);
+    }
+
+    public static Inventory createFor(Product product, int quantity, int reorderLevel, int clearLowQuantity) {
+        return new Inventory(product, quantity, reorderLevel, clearLowQuantity);
     }
 
     public Long getId() {

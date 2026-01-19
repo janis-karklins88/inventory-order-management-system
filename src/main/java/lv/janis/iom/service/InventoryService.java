@@ -1,5 +1,7 @@
 package lv.janis.iom.service;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -8,13 +10,15 @@ import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
 import lv.janis.iom.dto.filters.InventoryFilter;
+import lv.janis.iom.dto.requests.InventoryCreationRequest;
 import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.InventoryResponse;
 import lv.janis.iom.entity.Inventory;
+import lv.janis.iom.entity.NotificationTask;
 import lv.janis.iom.entity.Product;
-import lv.janis.iom.entity.StockMovement;
 import lv.janis.iom.enums.MovementType;
 import lv.janis.iom.repository.InventoryRepository;
+import lv.janis.iom.repository.NotificationTaskRepository;
 import lv.janis.iom.repository.ProductRepository;
 import lv.janis.iom.repository.specification.InventorySpecifications;
 
@@ -25,22 +29,43 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final ProductRepository productRepository;
     private final StockMovementService stockMovementService;
+    private final NotificationTaskRepository notificationTaskRepository;
 
-    public InventoryService(InventoryRepository inventoryRepository, ProductRepository productRepository, StockMovementService stockMovementService) {
+    public InventoryService(
+        InventoryRepository inventoryRepository, 
+        ProductRepository productRepository, 
+        StockMovementService stockMovementService, 
+        NotificationTaskRepository notificationTaskRepository
+    ) {
         this.inventoryRepository = inventoryRepository;
         this.productRepository = productRepository;
         this.stockMovementService = stockMovementService;
+        this.notificationTaskRepository = notificationTaskRepository;
     }
 
-    public Inventory createInventory(Long productId) {
+    public Inventory createInventory(Long productId, InventoryCreationRequest request) {
         requireProductId(productId);
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
+        }
+        requireNonNegative(request.getQuantity(), "quantity");
+        requireNonNegative(request.getReorderLevel(), "reorderLevel");
+        int clearLowQuantity = Optional.ofNullable(request.getClearLowQuantity()).orElse(0);
+        requireNonNegative(clearLowQuantity, "clearLowQuantity");
 
         return inventoryRepository.findByProductId(productId)
             .orElseGet(() -> {
                 Product product = productRepository.findById(productId)
                     .orElseThrow(() -> new IllegalArgumentException("Product with id " + productId + " not found"));
                 try {
-                    return inventoryRepository.saveAndFlush(Inventory.createFor(product));
+                    Inventory inventory = Inventory.createFor(
+                        product,
+                        request.getQuantity(),
+                        request.getReorderLevel(),
+                        clearLowQuantity
+                    );
+                    updateLowQuantityFlag(inventory);
+                    return inventoryRepository.saveAndFlush(inventory);
                 } catch (org.springframework.dao.DataIntegrityViolationException e) {
                     return inventoryRepository.findByProductId(productId)
                         .orElseThrow(() -> e);
@@ -60,6 +85,7 @@ public class InventoryService {
         var inventory = inventoryRepository.findByProductId(productId)
             .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
         inventory.increaseQuantity(quantityToAdd);
+        updateLowQuantityFlag(inventory);
         return inventoryRepository.save(inventory);
     }
 
@@ -68,7 +94,10 @@ public class InventoryService {
         requireQuantity(quantityToReduce, "quantityToReduce");
         var inventory = inventoryRepository.findByProductId(productId)
             .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+        boolean wasLowStock = inventory.isLowQuantity();
         inventory.decreaseQuantity(quantityToReduce);
+        updateLowQuantityFlag(inventory);
+        createLowStockTaskIfTriggered(inventory, wasLowStock);
         return inventoryRepository.save(inventory);
     }
 
@@ -77,7 +106,10 @@ public class InventoryService {
         requireQuantity(quantityToReserve, "quantityToReserve");
         var inventory = inventoryRepository.findByProductId(productId)
             .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+        boolean wasLowStock = inventory.isLowQuantity();
         inventory.reserveQuantity(quantityToReserve);
+        updateLowQuantityFlag(inventory);
+        createLowStockTaskIfTriggered(inventory, wasLowStock);
         return inventoryRepository.save(inventory);
     }
 
@@ -87,6 +119,7 @@ public class InventoryService {
         var inventory = inventoryRepository.findByProductId(productId)
             .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
         inventory.unreserveQuantity(quantityToCancel);
+        updateLowQuantityFlag(inventory);
         return inventoryRepository.save(inventory);
     }
 
@@ -95,7 +128,10 @@ public class InventoryService {
         requireQuantity(quantityToReduce, "quantityToReduce");
         var inventory = inventoryRepository.findByProductId(productId)
             .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+        boolean wasLowStock = inventory.isLowQuantity();
         inventory.deductReservedQuantity(quantityToReduce);
+        updateLowQuantityFlag(inventory);
+        createLowStockTaskIfTriggered(inventory, wasLowStock);
         return inventoryRepository.save(inventory);
     }
 
@@ -147,8 +183,10 @@ public class InventoryService {
         }
         else if(delta < 0) {
             int absDelta = Math.abs(delta);
+            boolean wasLowStock = inventory.isLowQuantity();
             inventory.decreaseQuantity(absDelta);
             updateLowQuantityFlag(inventory);
+            createLowStockTaskIfTriggered(inventory, wasLowStock);
             stockMovementService.createStockMovement(
                 new StockMovementCreationRequest(
                     inventory,
@@ -179,6 +217,14 @@ public class InventoryService {
         }
     }
 
+    private void createLowStockTaskIfTriggered(Inventory inventory, boolean wasLowStock) {
+        boolean isLowStockNow = inventory.isLowQuantity();
+        if (!wasLowStock && isLowStockNow) {
+            var newTask = new NotificationTask(inventory);
+            notificationTaskRepository.save(newTask);
+        }
+    }
+
     private static void requireProductId(Long productId) {
         if (productId == null) {
             throw new IllegalArgumentException("productId is required");
@@ -191,6 +237,15 @@ public class InventoryService {
         }
         if (quantity <= 0) {
             throw new IllegalArgumentException(paramName + " must be positive");
+        }
+    }
+
+    private static void requireNonNegative(Integer value, String paramName) {
+        if (value == null) {
+            throw new IllegalArgumentException(paramName + " is required");
+        }
+        if (value < 0) {
+            throw new IllegalArgumentException(paramName + " must be zero or positive");
         }
     }
 
