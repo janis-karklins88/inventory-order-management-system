@@ -12,6 +12,10 @@ import org.springframework.lang.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 
 import lv.janis.iom.entity.CustomerOrder;
+import lv.janis.iom.enums.ExternalOrderSource;
+
+import java.util.Optional;
+
 
 public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Long>, JpaSpecificationExecutor<CustomerOrder> {
 
@@ -19,5 +23,7 @@ public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Lo
     @EntityGraph(attributePaths = {"items", "items.product"})
     @NonNull
     Page<CustomerOrder> findAll(@Nullable Specification<CustomerOrder> spec,@NonNull Pageable pageable);
+
+    Optional<CustomerOrder> findBySourceAndExternalOrderId(ExternalOrderSource source, String externalOrderId);
 }
 

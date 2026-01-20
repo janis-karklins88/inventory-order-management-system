@@ -1,4 +1,5 @@
 package lv.janis.iom.entity;
+import lv.janis.iom.enums.ExternalOrderSource;
 import lv.janis.iom.enums.OrderStatus;
 
 
@@ -18,9 +19,13 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @EntityListeners(AuditingEntityListener.class)
 @Table(
     name = "customer_orders",
+    uniqueConstraints = {
+    @UniqueConstraint(name = "uk_order_source_external_id", columnNames = {"source", "external_order_id"})
+  },
     indexes = {
         @Index(name = "idx_customer_order_status", columnList = "status"),
-        @Index(name = "idx_customer_order_created_at", columnList = "created_at")
+        @Index(name = "idx_customer_order_created_at", columnList = "created_at"),
+        @Index(name = "idx_order_source_external_id", columnList = "source, external_order_id")
     }
 )
 public class CustomerOrder {
@@ -34,6 +39,14 @@ public class CustomerOrder {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal totalAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name="source", nullable=true, length=32)
+    private ExternalOrderSource source;
+
+    @Column(name="external_order_id", nullable=true, length=64)
+    private String externalOrderId;
+
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -54,12 +67,17 @@ public class CustomerOrder {
     )
     private List<OrderItem> items = new ArrayList<>();
 
+    @Column(nullable = true, length = 128)
+    private String shippingAddress;
+
+
     protected CustomerOrder() {
     }
 
     private CustomerOrder(OrderStatus status) {
         this.status = status;
         this.totalAmount = BigDecimal.ZERO;
+
     }
 
     public static CustomerOrder create() {
@@ -88,6 +106,47 @@ public class CustomerOrder {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getShippingAddress() {
+        return shippingAddress;
+    }
+    public ExternalOrderSource getSource() {
+        return source;
+    }
+    public String getExternalOrderId() {
+        return externalOrderId;
+    }
+
+    public void setSource(ExternalOrderSource source) {
+        if(this.source != null) {
+            throw new IllegalStateException("Source is already set and cannot be modified");
+        }
+        if (source == null ) {
+            throw new IllegalArgumentException("Source required");
+        }
+        ensureModifiable();
+        this.source = source;
+    }
+
+    public void setExternalOrderId(String externalOrderId) {
+        if(this.externalOrderId != null) {
+            throw new IllegalStateException("External Order ID is already set and cannot be modified");
+        }
+        if (externalOrderId == null || externalOrderId.isBlank()) {
+            throw new IllegalArgumentException("External Order ID required");
+        }
+        ensureModifiable();
+        this.externalOrderId = externalOrderId;
+    }
+
+
+    public void setShippingAddress(String shippingAddress) {
+        if (shippingAddress == null || shippingAddress.isBlank()) {
+            throw new IllegalArgumentException("Shipping address cannot be null or blank");
+        }
+        ensureModifiable();
+        this.shippingAddress = shippingAddress;
     }
 
     public void addItem(OrderItem item) {

@@ -6,18 +6,26 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import lv.janis.iom.dto.filters.CustomerOrderFilter;
+import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
+import lv.janis.iom.entity.Product;
 import lv.janis.iom.enums.MovementType;
 import lv.janis.iom.enums.OrderStatus;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.ProductRepository;
 import lv.janis.iom.repository.specification.OrderSpecifications;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class OrderService {
@@ -55,8 +63,10 @@ public class OrderService {
         var order = customerOrderRepository.findById(orderId)
             .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
 
-        var product = productRepository.findById(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Product with id " + productId + " not found"));
+        var product = productRepository.findAllByIdInAndIsDeletedFalse(Set.of(productId))
+            .stream()
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Product with id " + productId + " not found or deleted"));
         if (order.getStatus() != OrderStatus.CREATED) {
             throw new IllegalStateException("Can only modify items in CREATED");
 }
@@ -243,6 +253,42 @@ public class OrderService {
         );
 
         return customerOrderRepository.findAll(specs, safePageable).map(CustomerOrderResponse::from);
+    }
+
+    @Transactional
+    public CustomerOrder createExternalOrder(ExternalOrderIngestRequest request) {
+        var order = CustomerOrder.create();
+        order.setSource(request.getSource());
+        order.setExternalOrderId(request.getExternalOrderId());
+        order.setShippingAddress(request.getShippingAddress());
+        var itemRequests = request.getItems();
+        Set<Long> productIds = new HashSet<>();
+        for (var itemReq : itemRequests) {
+            productIds.add(itemReq.getProductId());
+        }
+        Map<Long, Product> productsById = new HashMap<>();
+        for (var product : productRepository.findAllByIdInAndIsDeletedFalse(productIds)) {
+            productsById.put(product.getId(), product);
+        }
+        if (productsById.size() != productIds.size()) {
+            var missingIds = new HashSet<>(productIds);
+            missingIds.removeAll(productsById.keySet());
+            throw new IllegalArgumentException("Products not found or deleted: " + missingIds);
+        }
+        for (var itemReq : itemRequests) {
+            var product = productsById.get(itemReq.getProductId());
+            var orderItem = OrderItem.createFor(product, itemReq.getQuantity(), product.getPrice());
+            order.addItem(orderItem);
+        }
+        try {
+            customerOrderRepository.saveAndFlush(order);
+        } catch (DataIntegrityViolationException ex) {
+            throw new IllegalStateException(
+                "Order from source " + request.getSource() + " with external ID " + request.getExternalOrderId() + " already exists",
+                ex
+            );
+        }
+        return statusProcessing(order.getId());
     }
     
 
