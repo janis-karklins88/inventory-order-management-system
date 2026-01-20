@@ -57,6 +57,10 @@ public class OrderService {
 
         var product = productRepository.findById(productId)
             .orElseThrow(() -> new IllegalArgumentException("Product with id " + productId + " not found"));
+        if (order.getStatus() != OrderStatus.CREATED) {
+            throw new IllegalStateException("Can only modify items in CREATED");
+}
+
 
         var priceAtOrderTime = product.getPrice();
         var orderItem = OrderItem.createFor(product, quantity, priceAtOrderTime);
@@ -70,6 +74,11 @@ public class OrderService {
         requireId(orderItemId, "orderItemId");
         var order = customerOrderRepository.findById(orderId)
             .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+
+        if (order.getStatus() != OrderStatus.CREATED) {
+            throw new IllegalStateException("Can only modify items in CREATED");
+}
+
 
         var orderItem = order.getItems().stream()
             .filter(item -> item.getId().equals(orderItemId))
