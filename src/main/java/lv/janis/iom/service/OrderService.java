@@ -116,8 +116,8 @@ public class OrderService {
 
         
         for (var item : order.getItems()) {
-            var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
-            inventoryService.reserveStock(item.getProduct().getId(), item.getQuantity());
+            var inventory = inventoryService.reserveStock(item.getProduct().getId(), item.getQuantity());
+            
             stockMovementService.createStockMovement(
                 new StockMovementCreationRequest(
                     inventory,
@@ -127,7 +127,7 @@ public class OrderService {
                     orderId
                 )
             );
-            inventoryService.updateLowQuantityFlag(inventory);
+            
         }
         order.markProcessing();
         return order;
@@ -229,7 +229,6 @@ public class OrderService {
                     orderId
                 )
             );
-            inventoryService.updateLowQuantityFlag(inventory);
         }
         order.markReturned();
         return order;
@@ -261,11 +260,14 @@ public class OrderService {
         order.setSource(request.getSource());
         order.setExternalOrderId(request.getExternalOrderId());
         order.setShippingAddress(request.getShippingAddress());
+        // Sum quantities by product ID.
         var itemRequests = request.getItems();
-        Set<Long> productIds = new HashSet<>();
+        Map<Long, Integer> quantitiesByProductId = new HashMap<>();
         for (var itemReq : itemRequests) {
-            productIds.add(itemReq.getProductId());
+            quantitiesByProductId.merge(itemReq.getProductId(), itemReq.getQuantity(), Integer::sum);
         }
+        Set<Long> productIds = quantitiesByProductId.keySet();
+        // Load products in bulk and ensure none are missing or deleted.
         Map<Long, Product> productsById = new HashMap<>();
         for (var product : productRepository.findAllByIdInAndIsDeletedFalse(productIds)) {
             productsById.put(product.getId(), product);
@@ -275,18 +277,25 @@ public class OrderService {
             missingIds.removeAll(productsById.keySet());
             throw new IllegalArgumentException("Products not found or deleted: " + missingIds);
         }
-        for (var itemReq : itemRequests) {
-            var product = productsById.get(itemReq.getProductId());
-            var orderItem = OrderItem.createFor(product, itemReq.getQuantity(), product.getPrice());
+        // Build order items with the current price snapshot.
+        for (var entry : quantitiesByProductId.entrySet()) {
+            var product = productsById.get(entry.getKey());
+            var orderItem = OrderItem.createFor(product, entry.getValue(), product.getPrice());
             order.addItem(orderItem);
         }
+        // Save and rely on the unique constraint for idempotency.
         try {
             customerOrderRepository.saveAndFlush(order);
         } catch (DataIntegrityViolationException ex) {
-            throw new IllegalStateException(
-                "Order from source " + request.getSource() + " with external ID " + request.getExternalOrderId() + " already exists",
-                ex
-            );
+            // If it already exists, return the existing order instead of failing.
+            return customerOrderRepository.findBySourceAndExternalOrderId(
+                    request.getSource(),
+                    request.getExternalOrderId()
+                )
+                .orElseThrow(() -> new IllegalStateException(
+                    "Order from source " + request.getSource() + " with external ID " + request.getExternalOrderId() + " already exists",
+                    ex
+                ));
         }
         return statusProcessing(order.getId());
     }
@@ -305,5 +314,8 @@ public class OrderService {
         }
         return pageable;
     }
+
+
+
 
     }
