@@ -3,16 +3,22 @@ package lv.janis.iom.dto.filters;
 import java.time.Instant;
 
 import lv.janis.iom.enums.OrderStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 public class CustomerOrderFilter {
+    @Schema(description = "Filter by order status", example = "PROCESSING")
     private OrderStatus status;
 
+    @Schema(description = "Created after timestamp (inclusive)")
     private Instant createdAfter;
 
+    @Schema(description = "Created before timestamp (inclusive)")
     private Instant createdBefore;
 
+    @Schema(description = "Updated after timestamp (inclusive)")
     private Instant updatedAfter;
 
+    @Schema(description = "Updated before timestamp (inclusive)")
     private Instant updatedBefore;
 
     public OrderStatus getStatus() {

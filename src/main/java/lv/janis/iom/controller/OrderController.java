@@ -17,6 +17,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
+
 import jakarta.validation.Valid;
 import lv.janis.iom.dto.filters.CustomerOrderFilter;
 import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
@@ -24,6 +31,7 @@ import lv.janis.iom.dto.requests.OrderItemAddRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.service.OrderService;
 
+@Tag(name = "Orders", description = "Order management endpoints")
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
@@ -34,6 +42,8 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    @Operation(summary = "Create order")
+    @ApiResponse(responseCode = "201", description = "Order created")
     @PostMapping
     public ResponseEntity<CustomerOrderResponse> createOrder() {
         var order = orderService.createOrder();
@@ -46,6 +56,15 @@ public class OrderController {
         return ResponseEntity.created(location).body(response);
     }
 
+    @Operation(
+        summary = "Create external order",
+        description = "Idempotent by (source, externalOrderId). Duplicate requests return the existing order."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Order created or existing order returned"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "404", description = "One or more products not found")
+    })
     @PostMapping("/external")
     public ResponseEntity<CustomerOrderResponse> createExternalOrder(
         @Valid @RequestBody ExternalOrderIngestRequest request
@@ -54,62 +73,120 @@ public class OrderController {
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "Add item to order")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Item added"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "404", description = "Order or product not found"),
+        @ApiResponse(responseCode = "409", description = "Order is not in CREATED status")
+    })
     @PostMapping("/{orderId}/items")
     public ResponseEntity<CustomerOrderResponse> addItem(
-        @PathVariable Long orderId,
+        @Parameter(description = "Order id", example = "1001") @PathVariable Long orderId,
         @Valid @RequestBody OrderItemAddRequest request
     ) {
         var order = orderService.addItem(orderId, request.getProductId(), request.getQuantity());
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "Remove item from order")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Item removed"),
+        @ApiResponse(responseCode = "404", description = "Order or item not found"),
+        @ApiResponse(responseCode = "409", description = "Order is not in CREATED status")
+    })
     @DeleteMapping("/{orderId}/items/{orderItemId}")
     public ResponseEntity<CustomerOrderResponse> removeItem(
-        @PathVariable Long orderId,
-        @PathVariable Long orderItemId
+        @Parameter(description = "Order id", example = "1001") @PathVariable Long orderId,
+        @Parameter(description = "Order item id", example = "501") @PathVariable Long orderItemId
     ) {
         var order = orderService.removeItem(orderId, orderItemId);
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "Mark order processing")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Order updated"),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "409", description = "Invalid order status or empty items")
+    })
     @PostMapping("/{orderId}/processing")
-    public ResponseEntity<CustomerOrderResponse> statusProcessing(@PathVariable Long orderId) {
+    public ResponseEntity<CustomerOrderResponse> statusProcessing(
+        @Parameter(description = "Order id", example = "1001") @PathVariable Long orderId
+    ) {
         var order = orderService.statusProcessing(orderId);
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "Mark order shipped")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Order updated"),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "409", description = "Invalid order status")
+    })
     @PostMapping("/{orderId}/shipped")
-    public ResponseEntity<CustomerOrderResponse> statusShipped(@PathVariable Long orderId) {
+    public ResponseEntity<CustomerOrderResponse> statusShipped(
+        @Parameter(description = "Order id", example = "1001") @PathVariable Long orderId
+    ) {
         var order = orderService.statusShipped(orderId);
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "Mark order delivered")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Order updated"),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "409", description = "Invalid order status")
+    })
     @PostMapping("/{orderId}/delivered")
-    public ResponseEntity<CustomerOrderResponse> statusDelivered(@PathVariable Long orderId) {
+    public ResponseEntity<CustomerOrderResponse> statusDelivered(
+        @Parameter(description = "Order id", example = "1001") @PathVariable Long orderId
+    ) {
         var order = orderService.statusDelivered(orderId);
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "Mark order cancelled")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Order updated"),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "409", description = "Invalid order status")
+    })
     @PostMapping("/{orderId}/cancelled")
-    public ResponseEntity<CustomerOrderResponse> statusCancelled(@PathVariable Long orderId) {
+    public ResponseEntity<CustomerOrderResponse> statusCancelled(
+        @Parameter(description = "Order id", example = "1001") @PathVariable Long orderId
+    ) {
         var order = orderService.statusCancelled(orderId);
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "Mark order returned")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Order updated"),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "409", description = "Invalid order status")
+    })
     @PostMapping("/{orderId}/returned")
-    public ResponseEntity<CustomerOrderResponse> statusReturned(@PathVariable Long orderId) {
+    public ResponseEntity<CustomerOrderResponse> statusReturned(
+        @Parameter(description = "Order id", example = "1001") @PathVariable Long orderId
+    ) {
         var order = orderService.statusReturned(orderId);
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "Get order by id")
+    @ApiResponse(responseCode = "200", description = "Order found")
     @GetMapping("/{orderId}")
     public ResponseEntity<CustomerOrderResponse> getCustomerOrderById(@PathVariable Long orderId) {
         var order = orderService.getCustomerOrderById(orderId);
         return ResponseEntity.ok(CustomerOrderResponse.from(order));
     }
 
+    @Operation(summary = "List orders")
+    @ApiResponse(responseCode = "200", description = "Orders listed")
     @GetMapping
     public ResponseEntity<Page<CustomerOrderResponse>> listOrders(
+        @Parameter(description = "Filter options") @ParameterObject
         @ModelAttribute CustomerOrderFilter filter,
         @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC)
         Pageable pageable

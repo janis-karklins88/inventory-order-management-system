@@ -3,11 +3,15 @@ package lv.janis.iom.dto.requests;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public class InventoryAdjustRequest {
 
+    @Schema(description = "Signed delta applied to quantity (negative allowed)", example = "-5")
     @NotNull
     private Integer delta;
 
+    @Schema(description = "Reason for adjustment", example = "Stock count correction")
     @NotBlank
     private String reason;
 

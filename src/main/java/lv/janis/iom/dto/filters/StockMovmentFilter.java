@@ -4,14 +4,22 @@ import java.time.Instant;
 
 import lv.janis.iom.enums.MovementType;
 import lv.janis.iom.enums.StockMovementDirection;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 public class StockMovmentFilter {
+    @Schema(description = "Filter by product id", example = "42")
     private Long productId;
+    @Schema(description = "Filter by inventory id", example = "2001")
     private Long inventoryId;
+    @Schema(description = "Filter from timestamp (inclusive)")
     private Instant from;
+    @Schema(description = "Filter to timestamp (inclusive)")
     private Instant to;
+    @Schema(description = "Filter by movement type", example = "ORDER_RESERVED")
     private MovementType movementType;
+    @Schema(description = "Filter by order id", example = "1001")
     private Long orderId;
+    @Schema(description = "Filter by direction", example = "OUT")
     private StockMovementDirection direction;
 
     public Long getProductId() {

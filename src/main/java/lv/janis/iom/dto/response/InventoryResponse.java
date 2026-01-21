@@ -2,15 +2,24 @@ package lv.janis.iom.dto.response;
 
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.Product;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 public class InventoryResponse {
+    @Schema(description = "Inventory id", example = "2001")
     private Long id;
+    @Schema(description = "Product name snapshot", example = "Widget A")
     private String name;
+    @Schema(description = "On-hand quantity", example = "120")
     private Integer quantity;
+    @Schema(description = "Product details")
     private Product product;
+    @Schema(description = "Reserved quantity", example = "10")
     private Integer reservedQuantity;
+    @Schema(description = "Reorder level threshold", example = "20")
     private Integer reorderLevel;
+    @Schema(description = "Clear low-quantity flag when above this value", example = "30")
     private Integer clearLowQuantity;
+    @Schema(description = "Low quantity flag", example = "false")
     private Boolean isLowQuantity;
 
     public InventoryResponse() {

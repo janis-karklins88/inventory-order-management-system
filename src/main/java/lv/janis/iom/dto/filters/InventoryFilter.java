@@ -1,13 +1,20 @@
 package lv.janis.iom.dto.filters;
 
 import lv.janis.iom.enums.StockStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 public class InventoryFilter {
+    @Schema(description = "Search by product name or SKU", example = "widget")
     private String q;
+    @Schema(description = "Minimum on-hand quantity", example = "10")
     private Integer minQuantity;
+    @Schema(description = "Maximum on-hand quantity", example = "200")
     private Integer maxQuantity;
+    @Schema(description = "Minimum available quantity", example = "5")
     private Integer minAvailable;
+    @Schema(description = "Maximum available quantity", example = "150")
     private Integer maxAvailable;
+    @Schema(description = "Stock status filter", example = "LOW")
     private StockStatus stockStatus;
 
     public String getQ() {

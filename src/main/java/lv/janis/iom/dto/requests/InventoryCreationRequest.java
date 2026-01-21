@@ -3,16 +3,21 @@ package lv.janis.iom.dto.requests;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public class InventoryCreationRequest {
 
+    @Schema(description = "Initial on-hand quantity", example = "100")
     @NotNull
     @PositiveOrZero
     private Integer quantity;
 
+    @Schema(description = "Reorder level threshold", example = "20")
     @NotNull
     @PositiveOrZero
     private Integer reorderLevel;
 
+    @Schema(description = "Clear low-quantity flag when above this value", example = "30")
     @PositiveOrZero
     private Integer clearLowQuantity;
 

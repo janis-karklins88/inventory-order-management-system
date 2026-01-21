@@ -5,15 +5,24 @@ import java.time.Instant;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.StockMovement;
 import lv.janis.iom.enums.MovementType;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 public class StockMovementResponse {
+    @Schema(description = "Movement id", example = "7001")
     private Long id;
+    @Schema(description = "Inventory id", example = "2001")
     private Long inventoryId;
+    @Schema(description = "Product id", example = "42")
     private Long productId;
+    @Schema(description = "Order id (if applicable)", example = "1001")
     private Long orderId;
+    @Schema(description = "Signed quantity change", example = "-3")
     private int delta;
+    @Schema(description = "Reason for movement", example = "Order status changed to SHIPPED")
     private String reason;
+    @Schema(description = "Creation timestamp")
     private Instant createdAt;
+    @Schema(description = "Movement type", example = "ORDER_FULFILLED")
     private MovementType movementType;
 
     public StockMovementResponse() {
