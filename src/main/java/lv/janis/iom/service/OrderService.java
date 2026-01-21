@@ -22,6 +22,7 @@ import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.ProductRepository;
 import lv.janis.iom.repository.specification.OrderSpecifications;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -61,12 +62,12 @@ public class OrderService {
         requireId(orderId, "orderId");
         requireId(productId, "productId");
         var order = customerOrderRepository.findById(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
 
         var product = productRepository.findAllByIdInAndIsDeletedFalse(Set.of(productId))
             .stream()
             .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Product with id " + productId + " not found or deleted"));
+            .orElseThrow(() -> new EntityNotFoundException("Product with id " + productId + " not found or deleted"));
         if (order.getStatus() != OrderStatus.CREATED) {
             throw new IllegalStateException("Can only modify items in CREATED");
 }
@@ -83,7 +84,7 @@ public class OrderService {
         requireId(orderId, "orderId");
         requireId(orderItemId, "orderItemId");
         var order = customerOrderRepository.findById(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
 
         if (order.getStatus() != OrderStatus.CREATED) {
             throw new IllegalStateException("Can only modify items in CREATED");
@@ -93,7 +94,7 @@ public class OrderService {
         var orderItem = order.getItems().stream()
             .filter(item -> item.getId().equals(orderItemId))
             .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Order item with id " + orderItemId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order item with id " + orderItemId + " not found"));
 
         order.removeItem(orderItem);
         return order;
@@ -105,7 +106,7 @@ public class OrderService {
     public CustomerOrder statusProcessing(Long orderId) {
         requireId(orderId, "orderId");
         var order = customerOrderRepository.findById(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
 
         if (order.getStatus() != OrderStatus.CREATED) {
             throw new IllegalStateException("Only orders in CREATED status can be moved to PROCESSING");
@@ -138,7 +139,7 @@ public class OrderService {
         public CustomerOrder statusShipped(Long orderId) {
         requireId(orderId, "orderId");
         var order = customerOrderRepository.findById(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
 
         if (order.getStatus() != OrderStatus.PROCESSING) {
             throw new IllegalStateException("Only orders in PROCESSING status can be moved to SHIPPED");
@@ -165,7 +166,7 @@ public class OrderService {
     public CustomerOrder statusDelivered(Long orderId) {
         requireId(orderId, "orderId");
         var order = customerOrderRepository.findById(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
 
         if (order.getStatus() != OrderStatus.SHIPPED) {
             throw new IllegalStateException("Only orders in SHIPPED status can be moved to DELIVERED");
@@ -179,7 +180,7 @@ public class OrderService {
     public CustomerOrder statusCancelled(Long orderId) {
         requireId(orderId, "orderId");
         var order = customerOrderRepository.findById(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalStateException("Order is already CANCELLED");
         }
@@ -211,7 +212,7 @@ public class OrderService {
     public CustomerOrder statusReturned(Long orderId) {
         requireId(orderId, "orderId");
         var order = customerOrderRepository.findById(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
 
         if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new IllegalStateException("Only orders in DELIVERED status can be moved to RETURNED");
@@ -238,7 +239,7 @@ public class OrderService {
     public CustomerOrder getCustomerOrderById(Long orderId) {
         requireId(orderId, "orderId");
         return customerOrderRepository.findById(orderId)
-            .orElseThrow(() -> new IllegalArgumentException("Order with id " + orderId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
     }
 
     @Transactional(readOnly = true)
@@ -275,7 +276,7 @@ public class OrderService {
         if (productsById.size() != productIds.size()) {
             var missingIds = new HashSet<>(productIds);
             missingIds.removeAll(productsById.keySet());
-            throw new IllegalArgumentException("Products not found or deleted: " + missingIds);
+            throw new EntityNotFoundException("Products not found or deleted: " + missingIds);
         }
         // Build order items with the current price snapshot.
         for (var entry : quantitiesByProductId.entrySet()) {

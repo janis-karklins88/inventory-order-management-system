@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityNotFoundException;
 import lv.janis.iom.dto.filters.InventoryFilter;
 import lv.janis.iom.dto.requests.InventoryCreationRequest;
 import lv.janis.iom.dto.requests.StockMovementCreationRequest;
@@ -63,7 +64,7 @@ public class InventoryService {
         return inventoryRepository.findByProductId(productId)
             .orElseGet(() -> {
                 Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new IllegalArgumentException("Product with id " + productId + " not found"));
+                    .orElseThrow(() -> new EntityNotFoundException("Product with id " + productId + " not found"));
                 try {
                     Inventory inventory = Inventory.createFor(
                         product,
@@ -83,14 +84,14 @@ public class InventoryService {
     public Inventory getInventoryByProductId(Long productId) {
         requireProductId(productId);
         return inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
     }
 
     public Inventory addStock(Long productId, Integer quantityToAdd) {
         requireProductId(productId);
         requireQuantity(quantityToAdd, "quantityToAdd");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         inventory.increaseQuantity(quantityToAdd);
         updateLowQuantityFlag(inventory);
         return inventoryRepository.save(inventory);
@@ -100,7 +101,7 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToReduce, "quantityToReduce");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.decreaseQuantity(quantityToReduce);
         updateLowQuantityFlag(inventory);
@@ -112,7 +113,7 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToReserve, "quantityToReserve");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.reserveQuantity(quantityToReserve);
         updateLowQuantityFlag(inventory);
@@ -124,7 +125,7 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToCancel, "quantityToCancel");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         inventory.unreserveQuantity(quantityToCancel);
         updateLowQuantityFlag(inventory);
         return inventoryRepository.save(inventory);
@@ -134,7 +135,7 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToReduce, "quantityToReduce");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.deductReservedQuantity(quantityToReduce);
         updateLowQuantityFlag(inventory);
@@ -146,7 +147,7 @@ public class InventoryService {
     public int getAvailableStock(Long productId) {
         requireProductId(productId);
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         return inventory.getAvailableQuantity();
     }
 
@@ -176,7 +177,7 @@ public class InventoryService {
             throw new IllegalArgumentException("delta is required");
         }
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new IllegalArgumentException("Inventory for product id " + productId + " not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
 
         if(reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("reason is required");

@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import jakarta.persistence.EntityNotFoundException;
 
 import lv.janis.iom.entity.Alert;
 import lv.janis.iom.entity.Inventory;
@@ -31,7 +32,7 @@ public class AlertService {
     @Transactional
     public void acknowledgeAlert(Long alertId) {
         var alert = alertRepository.findById(alertId)
-            .orElseThrow(() -> new IllegalArgumentException("Alert not found with id: " + alertId));
+            .orElseThrow(() -> new EntityNotFoundException("Alert not found with id: " + alertId));
         alert.acknowledge(Instant.now());
     }
 

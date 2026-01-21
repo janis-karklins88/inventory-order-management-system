@@ -28,6 +28,9 @@ public class ProductService {
 
     @Transactional
     public Product createProduct(ProductCreationRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
+        }
         if (productRepository.existsBySku(request.getSku())) {
             throw new IllegalStateException("Product with SKU " + request.getSku() + " already exists.");
         }
@@ -46,6 +49,9 @@ public class ProductService {
 
     @Transactional
     public Product updateProduct(Long id, ProductUpdateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
+        }
         boolean hasUpdates =
         request.getName() != null ||
         request.getDescription() != null ||
