@@ -47,6 +47,11 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    public Product getProductById(Long id) {
+        return productRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found."));
+    }
+
     @Transactional
     public Product updateProduct(Long id, ProductUpdateRequest request) {
         if (request == null) {
