@@ -3,6 +3,8 @@ package lv.janis.iom.service;
 import java.time.Instant;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.lang.NonNull;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,23 +32,23 @@ public class AlertService {
     }
 
     @Transactional
-    public void acknowledgeAlert(Long alertId) {
+    public void acknowledgeAlert(@NonNull Long alertId) {
         var alert = alertRepository.findById(alertId)
-            .orElseThrow(() -> new EntityNotFoundException("Alert not found with id: " + alertId));
+                .orElseThrow(() -> new EntityNotFoundException("Alert not found with id: " + alertId));
         alert.acknowledge(Instant.now());
     }
 
     @Transactional(readOnly = true)
-        public Page<Alert> getAlerts(Boolean unacknowledgedOnly, AlertType type, Pageable pageable){
+    public Page<Alert> getAlerts(Boolean unacknowledgedOnly, AlertType type, @NonNull Pageable pageable) {
         if (Boolean.TRUE.equals(unacknowledgedOnly) && type != null) {
             return alertRepository.findByAlertTypeAndAcknowledgedAtIsNullOrderByCreatedAtDesc(type, pageable);
         }
         if (Boolean.TRUE.equals(unacknowledgedOnly)) {
             return alertRepository.findByAcknowledgedAtIsNullOrderByCreatedAtDesc(pageable);
         }
-        // fallback: all alerts (you can add more filters later)
+
         return alertRepository.findAll(pageable);
-            
-        }
-    
+
+    }
+
 }

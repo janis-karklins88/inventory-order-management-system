@@ -10,6 +10,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.micrometer.common.lang.Nullable;
+
+import org.springframework.lang.NonNull;
 import jakarta.persistence.EntityNotFoundException;
 import lv.janis.iom.dto.filters.InventoryFilter;
 import lv.janis.iom.dto.requests.InventoryCreationRequest;
@@ -37,13 +40,11 @@ public class InventoryService {
     private final StockMovementService stockMovementService;
     private final NotificationTaskRepository notificationTaskRepository;
 
-
     public InventoryService(
-        InventoryRepository inventoryRepository, 
-        ProductRepository productRepository, 
-        StockMovementService stockMovementService, 
-        NotificationTaskRepository notificationTaskRepository
-    , AlertRepository alertRepository) {
+            InventoryRepository inventoryRepository,
+            ProductRepository productRepository,
+            StockMovementService stockMovementService,
+            NotificationTaskRepository notificationTaskRepository, AlertRepository alertRepository) {
         this.inventoryRepository = inventoryRepository;
         this.productRepository = productRepository;
         this.stockMovementService = stockMovementService;
@@ -51,7 +52,7 @@ public class InventoryService {
         this.alertRepository = alertRepository;
     }
 
-    public Inventory createInventory(Long productId, InventoryCreationRequest request) {
+    public Inventory createInventory(@NonNull Long productId, InventoryCreationRequest request) {
         requireProductId(productId);
         if (request == null) {
             throw new IllegalArgumentException("request is required");
@@ -62,36 +63,36 @@ public class InventoryService {
         requireNonNegative(clearLowQuantity, "clearLowQuantity");
 
         return inventoryRepository.findByProductId(productId)
-            .orElseGet(() -> {
-                Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new EntityNotFoundException("Product with id " + productId + " not found"));
-                try {
-                    Inventory inventory = Inventory.createFor(
-                        product,
-                        request.getQuantity(),
-                        request.getReorderLevel(),
-                        clearLowQuantity
-                    );
-                    updateLowQuantityFlag(inventory);
-                    return inventoryRepository.saveAndFlush(inventory);
-                } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                    return inventoryRepository.findByProductId(productId)
-                        .orElseThrow(() -> e);
-                }
-            });
+                .orElseGet(() -> {
+                    Product product = productRepository.findById(productId)
+                            .orElseThrow(
+                                    () -> new EntityNotFoundException("Product with id " + productId + " not found"));
+                    try {
+                        Inventory inventory = Inventory.createFor(
+                                product,
+                                request.getQuantity(),
+                                request.getReorderLevel(),
+                                clearLowQuantity);
+                        updateLowQuantityFlag(inventory);
+                        return inventoryRepository.saveAndFlush(inventory);
+                    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                        return inventoryRepository.findByProductId(productId)
+                                .orElseThrow(() -> e);
+                    }
+                });
     }
 
     public Inventory getInventoryByProductId(Long productId) {
         requireProductId(productId);
         return inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
     }
 
     public Inventory addStock(Long productId, Integer quantityToAdd) {
         requireProductId(productId);
         requireQuantity(quantityToAdd, "quantityToAdd");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         inventory.increaseQuantity(quantityToAdd);
         updateLowQuantityFlag(inventory);
         return inventoryRepository.save(inventory);
@@ -101,7 +102,7 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToReduce, "quantityToReduce");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.decreaseQuantity(quantityToReduce);
         updateLowQuantityFlag(inventory);
@@ -113,7 +114,7 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToReserve, "quantityToReserve");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.reserveQuantity(quantityToReserve);
         updateLowQuantityFlag(inventory);
@@ -125,7 +126,7 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToCancel, "quantityToCancel");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         inventory.unreserveQuantity(quantityToCancel);
         updateLowQuantityFlag(inventory);
         return inventoryRepository.save(inventory);
@@ -135,7 +136,7 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToReduce, "quantityToReduce");
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.deductReservedQuantity(quantityToReduce);
         updateLowQuantityFlag(inventory);
@@ -143,32 +144,30 @@ public class InventoryService {
         return inventoryRepository.save(inventory);
     }
 
-
     public int getAvailableStock(Long productId) {
         requireProductId(productId);
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
         return inventory.getAvailableQuantity();
     }
 
-    public Page<InventoryResponse> getInventory(InventoryFilter filter, Pageable pageable) {
+    public Page<InventoryResponse> getInventory(@Nullable InventoryFilter filter, @NonNull Pageable pageable) {
         var safePageable = capPageSize(pageable, 100);
         var safeFilter = filter != null ? filter : new InventoryFilter();
         var spec = Specification.where(
-            InventorySpecifications.search(safeFilter.getQ())
-                .and(InventorySpecifications.quantityGte(safeFilter.getMinQuantity()))
-                .and(InventorySpecifications.quantityLte(safeFilter.getMaxQuantity()))
-                .and(InventorySpecifications.availableGte(safeFilter.getMinAvailable()))
-                .and(InventorySpecifications.availableLte(safeFilter.getMaxAvailable()))
-                .and(InventorySpecifications.stockStatus(safeFilter.getStockStatus()))
-                .and(InventorySpecifications.productNotDeleted())
-        );
+                InventorySpecifications.search(safeFilter.getQ())
+                        .and(InventorySpecifications.quantityGte(safeFilter.getMinQuantity()))
+                        .and(InventorySpecifications.quantityLte(safeFilter.getMaxQuantity()))
+                        .and(InventorySpecifications.availableGte(safeFilter.getMinAvailable()))
+                        .and(InventorySpecifications.availableLte(safeFilter.getMaxAvailable()))
+                        .and(InventorySpecifications.stockStatus(safeFilter.getStockStatus()))
+                        .and(InventorySpecifications.productNotDeleted()));
         return inventoryRepository.findAll(spec, safePageable).map(InventoryResponse::from);
     }
 
     @Transactional(readOnly = true)
     public List<Inventory> listInStockAllInventory() {
-    return inventoryRepository.findAllInStockWithProduct();
+        return inventoryRepository.findAllInStockWithProduct();
     }
 
     public Inventory adjustInventoryQuantity(Long productId, Integer delta, String reason) {
@@ -177,41 +176,35 @@ public class InventoryService {
             throw new IllegalArgumentException("delta is required");
         }
         var inventory = inventoryRepository.findByProductId(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
 
-        if(reason == null || reason.isBlank()) {
+        if (reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("reason is required");
         }
-        if(delta > 0) {
+        if (delta > 0) {
             inventory.increaseQuantity(delta);
             updateLowQuantityFlag(inventory);
             stockMovementService.createStockMovement(
-                new StockMovementCreationRequest(
-                    inventory,
-                    MovementType.MANUAL_ADJUSTMENT,
-                    delta,
-                    reason,
-                    null
-                )
-            );
-        }
-        else if(delta < 0) {
+                    new StockMovementCreationRequest(
+                            inventory,
+                            MovementType.MANUAL_ADJUSTMENT,
+                            delta,
+                            reason,
+                            null));
+        } else if (delta < 0) {
             int absDelta = Math.abs(delta);
             boolean wasLowStock = inventory.isLowQuantity();
             inventory.decreaseQuantity(absDelta);
             updateLowQuantityFlag(inventory);
             lowStockCheck(inventory, wasLowStock);
             stockMovementService.createStockMovement(
-                new StockMovementCreationRequest(
-                    inventory,
-                    MovementType.MANUAL_ADJUSTMENT,
-                    delta,
-                    reason,
-                    null
-                )
-            );
-        }
-        else {
+                    new StockMovementCreationRequest(
+                            inventory,
+                            MovementType.MANUAL_ADJUSTMENT,
+                            delta,
+                            reason,
+                            null));
+        } else {
             throw new IllegalArgumentException("delta cannot be zero");
         }
         return inventoryRepository.save(inventory);
@@ -265,13 +258,11 @@ public class InventoryService {
         }
     }
 
-    private Pageable capPageSize(Pageable pageable, int maxSize) {
+    private @NonNull Pageable capPageSize(Pageable pageable, int maxSize) {
         if (pageable.getPageSize() > maxSize) {
             return PageRequest.of(pageable.getPageNumber(), maxSize, pageable.getSort());
         }
         return pageable;
     }
-
-
 
 }

@@ -16,6 +16,8 @@ import lv.janis.iom.repository.ProductRepository;
 import lv.janis.iom.repository.specification.ProductSpecifications;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 @Service
 public class ProductService {
@@ -39,39 +41,37 @@ public class ProductService {
         }
 
         Product product = Product.create(
-            request.getSku(),
-            request.getName(),
-            request.getDescription(),
-            request.getPrice()
-        );
+                request.getSku(),
+                request.getName(),
+                request.getDescription(),
+                request.getPrice());
         return productRepository.save(product);
     }
 
-    public Product getProductById(Long id) {
+    public Product getProductById(@NonNull Long id) {
         return productRepository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Product not found."));
+                .orElseThrow(() -> new EntityNotFoundException("Product not found."));
     }
 
     @Transactional
-    public Product updateProduct(Long id, ProductUpdateRequest request) {
+    public Product updateProduct(@NonNull Long id, ProductUpdateRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("request is required");
         }
-        boolean hasUpdates =
-        request.getName() != null ||
-        request.getDescription() != null ||
-        request.getPrice() != null;
+        boolean hasUpdates = request.getName() != null ||
+                request.getDescription() != null ||
+                request.getPrice() != null;
 
         if (!hasUpdates) {
             throw new IllegalStateException("At least one field must be provided for update");
         }
-        
+
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Product not found."));
-        
+                .orElseThrow(() -> new EntityNotFoundException("Product not found."));
+
         if (request.getName() != null) {
             if (!request.getName().equals(product.getName())
-                && productRepository.existsByName(request.getName())) {
+                    && productRepository.existsByName(request.getName())) {
                 throw new IllegalStateException("Product with name " + request.getName() + " already exists.");
             }
             product.rename(request.getName());
@@ -87,23 +87,23 @@ public class ProductService {
     }
 
     @Transactional
-    public Product deactivateProduct(Long id) {
+    public Product deactivateProduct(@NonNull Long id) {
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Product not found."));
+                .orElseThrow(() -> new EntityNotFoundException("Product not found."));
         product.deactivate();
         return productRepository.save(product);
     }
 
     @Transactional
-    public Product activateProduct(Long id) {
+    public Product activateProduct(@NonNull Long id) {
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Product not found."));
+                .orElseThrow(() -> new EntityNotFoundException("Product not found."));
         product.activate();
         return productRepository.save(product);
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductResponse> listProducts(ListProductFilter filter, Pageable pageable) {
+    public Page<ProductResponse> listProducts(@Nullable ListProductFilter filter, @NonNull Pageable pageable) {
         ListProductFilter safeFilter = filter == null ? new ListProductFilter() : filter;
         Pageable safePageable = capPageSize(pageable, 100);
         Specification<Product> spec = Specification
@@ -122,7 +122,7 @@ public class ProductService {
         return productRepository.findAll(spec, safePageable).map(ProductResponse::from);
     }
 
-    private Pageable capPageSize(Pageable pageable, int maxSize) {
+    private @NonNull Pageable capPageSize(Pageable pageable, int maxSize) {
         if (pageable.getPageSize() > maxSize) {
             return PageRequest.of(pageable.getPageNumber(), maxSize, pageable.getSort());
         }
@@ -130,4 +130,3 @@ public class ProductService {
     }
 
 }
-    

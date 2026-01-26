@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import org.springframework.lang.NonNull;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,7 +30,6 @@ import lv.janis.iom.dto.requests.ProductCreationRequest;
 import lv.janis.iom.dto.requests.ProductUpdateRequest;
 import lv.janis.iom.dto.response.ProductResponse;
 import lv.janis.iom.service.ProductService;
-
 
 @Tag(name = "Products", description = "Product management endpoints")
 @RestController
@@ -49,10 +49,10 @@ public class ProductController {
         var product = productService.createProduct(request);
         var response = ProductResponse.from(product);
         URI location = ServletUriComponentsBuilder
-            .fromCurrentRequest()
-            .path("/{id}")
-            .buildAndExpand(product.getId())
-            .toUri();
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(product.getId())
+                .toUri();
         return ResponseEntity.created(location).body(response);
     }
 
@@ -60,11 +60,8 @@ public class ProductController {
     @ApiResponse(responseCode = "200", description = "Products listed")
     @GetMapping
     public ResponseEntity<Page<ProductResponse>> listProducts(
-        @Parameter(description = "Filter options") @ParameterObject
-        @Valid @ModelAttribute ListProductFilter filter,
-        @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC)
-        Pageable pageable
-    ) {
+            @Parameter(description = "Filter options") @ParameterObject @Valid @ModelAttribute ListProductFilter filter,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) @NonNull Pageable pageable) {
         var page = productService.listProducts(filter, pageable);
         return ResponseEntity.ok(page);
     }
@@ -73,9 +70,7 @@ public class ProductController {
     @ApiResponse(responseCode = "200", description = "Deleted products listed")
     @GetMapping("/deleted")
     public ResponseEntity<Page<ProductResponse>> listDeletedProducts(
-        @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC)
-        Pageable pageable
-    ) {
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         var page = productService.listDeletedProducts(pageable);
         return ResponseEntity.ok(page);
     }
@@ -83,7 +78,7 @@ public class ProductController {
     @Operation(summary = "Get product by id")
     @ApiResponse(responseCode = "200", description = "Product found")
     @GetMapping("/{id}")
-    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable @NonNull Long id) {
         var product = productService.getProductById(id);
         return ResponseEntity.ok(ProductResponse.from(product));
     }
@@ -92,9 +87,8 @@ public class ProductController {
     @ApiResponse(responseCode = "200", description = "Product updated")
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> updateProduct(
-        @PathVariable Long id,
-        @Valid @RequestBody ProductUpdateRequest request
-    ) {
+            @PathVariable @NonNull Long id,
+            @Valid @RequestBody ProductUpdateRequest request) {
         var product = productService.updateProduct(id, request);
         return ResponseEntity.ok(ProductResponse.from(product));
     }
@@ -102,7 +96,7 @@ public class ProductController {
     @Operation(summary = "Deactivate product")
     @ApiResponse(responseCode = "200", description = "Product deactivated")
     @PostMapping("/{id}/deactivate")
-    public ResponseEntity<ProductResponse> deactivateProduct(@PathVariable Long id) {
+    public ResponseEntity<ProductResponse> deactivateProduct(@PathVariable @NonNull Long id) {
         var product = productService.deactivateProduct(id);
         return ResponseEntity.ok(ProductResponse.from(product));
     }
@@ -110,9 +104,9 @@ public class ProductController {
     @Operation(summary = "Activate product")
     @ApiResponse(responseCode = "200", description = "Product activated")
     @PostMapping("/{id}/activate")
-    public ResponseEntity<ProductResponse> activateProduct(@PathVariable Long id) {
+    public ResponseEntity<ProductResponse> activateProduct(@PathVariable @NonNull Long id) {
         var product = productService.activateProduct(id);
         return ResponseEntity.ok(ProductResponse.from(product));
     }
-    
+
 }
