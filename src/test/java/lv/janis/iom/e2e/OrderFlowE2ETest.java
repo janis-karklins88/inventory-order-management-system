@@ -39,12 +39,26 @@ class OrderFlowE2ETest {
     assertEquals("DELIVERED", delivered.get("status").asText());
   }
 
+  @Test
+  void externalOrder_idempotent_returnsSameOrder() throws Exception {
+    long productId = createProduct();
+    createInventory(productId);
+
+    JsonNode first = createExternalOrder("EXT-E2E-1", productId, 2);
+    JsonNode second = createExternalOrder("EXT-E2E-1", productId, 2);
+
+    assertEquals(first.get("id").asLong(), second.get("id").asLong());
+    assertEquals("PROCESSING", second.get("status").asText());
+  }
+
   private long createProduct() throws Exception {
+    String sku = "SKU-E2E-" + System.nanoTime();
+    String name = "E2E Product " + sku;
     var response = mockMvc.perform(post("/api/products")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
-            {"sku":"SKU-E2E-1","name":"E2E Product","description":"desc","price":9.99}
-            """))
+            {"sku":"%s","name":"%s","description":"desc","price":9.99}
+            """.formatted(sku, name)))
         .andExpect(status().isCreated())
         .andReturn()
         .getResponse()
@@ -77,6 +91,24 @@ class OrderFlowE2ETest {
             {"productId":%d,"quantity":%d}
             """.formatted(productId, quantity)))
         .andExpect(status().isOk());
+  }
+
+  private JsonNode createExternalOrder(String externalOrderId, long productId, int quantity) throws Exception {
+    var response = mockMvc.perform(post("/api/orders/external")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "source":"WEB_SHOP",
+              "externalOrderId":"%s",
+              "shippingAddress":"Addr",
+              "items":[{"productId":%d,"quantity":%d}]
+            }
+            """.formatted(externalOrderId, productId, quantity)))
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    return objectMapper.readTree(response);
   }
 
   private JsonNode updateStatus(long orderId, String status) throws Exception {

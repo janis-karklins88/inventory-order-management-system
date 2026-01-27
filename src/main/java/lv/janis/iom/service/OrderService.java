@@ -24,6 +24,7 @@ import lv.janis.iom.repository.specification.OrderSpecifications;
 import org.springframework.lang.NonNull;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.EntityManager;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,18 +38,21 @@ public class OrderService {
     private final InventoryService inventoryService;
     private final ProductRepository productRepository;
     private final StockMovementService stockMovementService;
+    private final EntityManager entityManager;
 
     public OrderService(
             CustomerOrderRepository customerOrderRepository,
             ProductRepository productRepository,
             InventoryService inventoryService,
-            StockMovementService stockMovementService
+            StockMovementService stockMovementService,
+            EntityManager entityManager
 
     ) {
         this.customerOrderRepository = customerOrderRepository;
         this.productRepository = productRepository;
         this.inventoryService = inventoryService;
         this.stockMovementService = stockMovementService;
+        this.entityManager = entityManager;
 
     }
 
@@ -246,6 +250,12 @@ public class OrderService {
 
     @Transactional
     public CustomerOrder createExternalOrder(ExternalOrderIngestRequest request) {
+        var existingOrder = customerOrderRepository.findBySourceAndExternalOrderId(
+                request.getSource(),
+                request.getExternalOrderId());
+        if (existingOrder.isPresent()) {
+            return existingOrder.get();
+        }
         var order = CustomerOrder.create();
         order.setSource(request.getSource());
         order.setExternalOrderId(request.getExternalOrderId());
@@ -277,6 +287,8 @@ public class OrderService {
         try {
             customerOrderRepository.saveAndFlush(order);
         } catch (DataIntegrityViolationException ex) {
+            // Clear failed entity state to avoid flush errors after constraint violations.
+            entityManager.clear();
             // If it already exists, return the existing order instead of failing.
             return customerOrderRepository.findBySourceAndExternalOrderId(
                     request.getSource(),

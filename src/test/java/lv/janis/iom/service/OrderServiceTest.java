@@ -27,6 +27,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import jakarta.persistence.EntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -49,6 +50,8 @@ public class OrderServiceTest {
   InventoryService inventoryService;
   @Mock
   StockMovementService stockMovementService;
+  @Mock
+  EntityManager entityManager;
 
   @InjectMocks
   OrderService orderService;
@@ -309,6 +312,8 @@ public class OrderServiceTest {
         "EXT-1",
         "Addr",
         List.of(externalItem(1L, 2)));
+    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-1"))
+        .thenReturn(Optional.empty());
     when(productRepository.findAllByIdInAndIsDeletedFalse(Set.of(1L))).thenReturn(List.of());
 
     var ex = assertThrows(EntityNotFoundException.class,
@@ -325,13 +330,15 @@ public class OrderServiceTest {
         "Addr",
         List.of(externalItem(1L, 2)));
     var product = product(1L, "SKU-1", new BigDecimal("9.99"));
+    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-1"))
+        .thenReturn(Optional.empty());
     when(productRepository.findAllByIdInAndIsDeletedFalse(Set.of(1L))).thenReturn(List.of(product));
     when(customerOrderRepository.saveAndFlush(any(CustomerOrder.class)))
         .thenThrow(new DataIntegrityViolationException("dupe"));
     var existing = CustomerOrder.create();
     setId(existing, 99L);
     when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-1"))
-        .thenReturn(Optional.of(existing));
+        .thenReturn(Optional.empty(), Optional.of(existing));
 
     var result = orderService.createExternalOrder(request);
 
@@ -350,6 +357,8 @@ public class OrderServiceTest {
             externalItem(1L, 3)));
     var product = product(1L, "SKU-1", new BigDecimal("9.99"));
     var savedOrderRef = new AtomicReference<CustomerOrder>();
+    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-1"))
+        .thenReturn(Optional.empty());
     when(productRepository.findAllByIdInAndIsDeletedFalse(Set.of(1L))).thenReturn(List.of(product));
     when(customerOrderRepository.saveAndFlush(any(CustomerOrder.class)))
         .thenAnswer(invocation -> {
