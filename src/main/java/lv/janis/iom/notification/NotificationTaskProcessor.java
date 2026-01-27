@@ -9,6 +9,10 @@ import jakarta.transaction.Transactional;
 import lv.janis.iom.enums.NotificationTaskStatus;
 import lv.janis.iom.repository.NotificationTaskRepository;
 
+/**
+ * Scheduled processor for pending notification tasks.
+ * Pulls due tasks, attempts delivery, and applies exponential backoff on failures.
+ */
 @Component
 public class NotificationTaskProcessor {
     private static final Logger log = LoggerFactory.getLogger(NotificationTaskProcessor.class);
@@ -22,6 +26,10 @@ public class NotificationTaskProcessor {
         this.notificationSender = notificationSender;
     }
 
+    /**
+     * Processes pending tasks in batches of 50 using the configured delay.
+     * Successful sends are marked SENT; failures are re-queued with backoff.
+     */
     @Scheduled(fixedDelayString = "${notification.task.processor.delay-ms:5000}")
     @Transactional
     public void processPendingTasks() {
