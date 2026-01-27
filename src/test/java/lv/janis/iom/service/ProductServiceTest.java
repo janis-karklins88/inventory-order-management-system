@@ -44,7 +44,6 @@ public class ProductServiceTest {
     verifyNoInteractions(productRepository);
   }
 
-  @SuppressWarnings("null")
   @Test
   void createProduct_skuExists_throws_andDoesNotSave() {
     var req = new ProductCreationRequest();
@@ -64,7 +63,7 @@ public class ProductServiceTest {
     verify(productRepository, never()).existsByName(any());
   }
 
-  @SuppressWarnings("null")
+
   @Test
   void createProduct_nameExists_throws_andDoesNotSave() {
     var req = new ProductCreationRequest();
@@ -85,7 +84,7 @@ public class ProductServiceTest {
     verify(productRepository, never()).save(any());
   }
 
-  @SuppressWarnings("null")
+
   @Test
   void createProduct_ok_savesAndReturns() {
     var req = new ProductCreationRequest();

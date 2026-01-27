@@ -14,11 +14,12 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,7 +39,7 @@ public class OrderControllerTest {
   @Autowired
   MockMvc mockMvc;
 
-  @MockBean
+  @MockitoBean
   OrderService orderService;
 
   @Test
@@ -139,7 +140,8 @@ public class OrderControllerTest {
     var order = CustomerOrder.create();
     setId(order, 7L);
     var page = new PageImpl<>(List.of(order), PageRequest.of(0, 10), 1);
-    when(orderService.getCustomerOrders(any(), any(Pageable.class))).thenReturn(page.map(lv.janis.iom.dto.response.CustomerOrderResponse::from));
+    when(orderService.getCustomerOrders(any(), any(Pageable.class)))
+        .thenReturn(page.map(lv.janis.iom.dto.response.CustomerOrderResponse::from));
 
     mockMvc.perform(get("/api/orders?size=10"))
         .andExpect(status().isOk())
@@ -160,7 +162,6 @@ public class OrderControllerTest {
     return request;
   }
 
-  @SuppressWarnings("unused")
   private static ExternalOrderItemRequest externalItem(Long productId, int quantity) {
     var item = new ExternalOrderItemRequest();
     setField(item, "productId", productId);

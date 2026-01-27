@@ -9,7 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -35,7 +34,7 @@ class ProductControllerTest {
   @Autowired
   MockMvc mockMvc;
 
-  @MockBean
+  @MockitoBean
   ProductService productService;
 
   @Test
@@ -63,7 +62,8 @@ class ProductControllerTest {
     var product = product("SKU-1", "Name1", new BigDecimal("9.99"));
     setId(product, 1L);
     var page = new PageImpl<>(List.of(product), PageRequest.of(0, 20), 1);
-    when(productService.listProducts(any(), any(Pageable.class))).thenReturn(page.map(p -> lv.janis.iom.dto.response.ProductResponse.from(p)));
+    when(productService.listProducts(any(), any(Pageable.class)))
+        .thenReturn(page.map(p -> lv.janis.iom.dto.response.ProductResponse.from(p)));
 
     mockMvc.perform(get("/api/products?size=20"))
         .andExpect(status().isOk())

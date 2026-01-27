@@ -33,6 +33,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,14 +52,16 @@ public class InventoryServiceTest {
   @InjectMocks
   InventoryService inventoryService;
 
+  @SuppressWarnings("null")
   @Test
   void createInventory_nullProductId_throws() {
     var req = new InventoryCreationRequest();
     req.setQuantity(1);
     req.setReorderLevel(1);
 
-    var ex = assertThrows(IllegalArgumentException.class,
-        () -> inventoryService.createInventory(null, req));
+    InventoryService raw = inventoryService;
+    var ex = assertThrows(IllegalArgumentException.class, () -> raw.createInventory(null, req));
+
     assertEquals("productId is required", ex.getMessage());
     verifyNoInteractions(inventoryRepository, productRepository);
   }
