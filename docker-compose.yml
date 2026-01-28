@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: iom-mysql
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: iom
+      MYSQL_USER: iom_user
+      MYSQL_PASSWORD: iom_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-proot_pass" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  db_data:
