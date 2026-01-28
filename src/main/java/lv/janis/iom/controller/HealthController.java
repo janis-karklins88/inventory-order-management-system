@@ -12,8 +12,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-
-
 @Tag(name = "Health", description = "Service health endpoints")
 @RestController
 @RequestMapping("/api")
@@ -23,6 +21,6 @@ public class HealthController {
     @ApiResponse(responseCode = "200", description = "Service is healthy")
     @GetMapping("/health")
     public String healthCheck() {
-        return "Application is healthy!";
+        return "Application is running!";
     }
 }
