@@ -42,3 +42,17 @@ jobs:
         with:
           name: surefire-reports
           path: target/surefire-reports/**
+          
+      - name: Print surefire test output (on failure)
+        if: failure()
+        run: |
+          echo "=== surefire-reports listing ==="
+          ls -la target/surefire-reports || true
+          echo "=== tail of all surefire .txt reports ==="
+          for f in target/surefire-reports/*.txt; do
+            echo "----- $f -----"
+            tail -n 200 "$f" || true
+          done
+          echo "=== grep PatternParseException / swagger-ui / webjars ==="
+          grep -R "PatternParseException\|No more pattern data\|swagger\|webjars\|\*\*" -n target/surefire-reports || true
+
