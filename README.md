@@ -1,3 +1,6 @@
+![CI](https://github.com/janis-karklins88/inventory-order-management-system/actions/workflows/ci.yml/badge.svg)
+
+
 # Inventory & Orders Management System (Backend)
 
 Spring Boot backend application for managing products, inventory, and orders.  
