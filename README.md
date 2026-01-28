@@ -36,13 +36,15 @@ No local MySQL installation is required.
 
 ---
 
-## How to Run (2 commands)
+## How to Run 
 
-### 1. Start database (Docker)
+1. Start database (Docker)
 
 ```bash
 docker compose up -d
-
+```
+2. Run application
+```bash
 ./mvnw spring-boot:run
 ```
 
@@ -99,6 +101,32 @@ The project includes
 - OpenAPI annotations are present in controllers.
 
 - Infrastructure (DB) is containerized; the application runs locally by design.
+  
+- This project focuses on backend architecture and business logic.
+Authentication, authorization, and frontend UI are intentionally out of scope.
+
+## API usage
+All APIs are prefixed with `/api`.
+
+### Health check
+
+```bash
+http://localhost:8080/api/health
+```
+### OpenAPI Specification
+The OpenAPI specification is available at:
+```bash
+http://localhost:8080/v3/api-docs
+```
+
+This file can be:
+- imported into Postman
+- imported into Insomnia
+- used for client generation
+
+Swagger UI is currently disabled.
+
+
 
 ### Author
 Janis Karklins
