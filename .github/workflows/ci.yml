@@ -21,5 +21,24 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Build + test
-        run: mvn -B -Dspring.profiles.active=test clean test
+      - name: Show test resources
+        run: |
+          ls -la src/test/resources || true
+          echo "----"
+          find src/test/resources -maxdepth 2 -type f -print || true
+
+      - name: Build + test (force H2)
+        run: mvn -B -e clean test
+        env:
+          SPRING_DATASOURCE_URL: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL
+          SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
+          SPRING_DATASOURCE_USERNAME: sa
+          SPRING_DATASOURCE_PASSWORD: ""
+          SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/**
