@@ -16,13 +16,12 @@ import org.springframework.lang.NonNull;
 import jakarta.persistence.EntityNotFoundException;
 import lv.janis.iom.dto.filters.InventoryFilter;
 import lv.janis.iom.dto.requests.InventoryCreationRequest;
-import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.InventoryResponse;
 import lv.janis.iom.entity.Alert;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.NotificationTask;
 import lv.janis.iom.entity.Product;
-import lv.janis.iom.enums.MovementType;
+import lv.janis.iom.factory.StockMovementRequestFactory;
 import lv.janis.iom.repository.AlertRepository;
 import lv.janis.iom.repository.InventoryRepository;
 import lv.janis.iom.repository.NotificationTaskRepository;
@@ -185,12 +184,7 @@ public class InventoryService {
             inventory.increaseQuantity(delta);
             updateLowQuantityFlag(inventory);
             stockMovementService.createStockMovement(
-                    new StockMovementCreationRequest(
-                            inventory,
-                            MovementType.MANUAL_ADJUSTMENT,
-                            delta,
-                            reason,
-                            null));
+                    StockMovementRequestFactory.manualAdjustment(inventory, delta, reason));
         } else if (delta < 0) {
             int absDelta = Math.abs(delta);
             boolean wasLowStock = inventory.isLowQuantity();
@@ -198,12 +192,7 @@ public class InventoryService {
             updateLowQuantityFlag(inventory);
             lowStockCheck(inventory, wasLowStock);
             stockMovementService.createStockMovement(
-                    new StockMovementCreationRequest(
-                            inventory,
-                            MovementType.MANUAL_ADJUSTMENT,
-                            delta,
-                            reason,
-                            null));
+                    StockMovementRequestFactory.manualAdjustment(inventory, delta, reason));
         } else {
             throw new IllegalArgumentException("delta cannot be zero");
         }

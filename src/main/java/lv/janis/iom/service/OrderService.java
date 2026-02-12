@@ -11,13 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lv.janis.iom.dto.filters.CustomerOrderFilter;
 import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
-import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
 import lv.janis.iom.entity.Product;
-import lv.janis.iom.enums.MovementType;
 import lv.janis.iom.enums.OrderStatus;
+import lv.janis.iom.factory.StockMovementRequestFactory;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.ProductRepository;
 import lv.janis.iom.repository.specification.OrderSpecifications;
@@ -121,12 +120,7 @@ public class OrderService {
             var inventory = inventoryService.reserveStock(item.getProduct().getId(), item.getQuantity());
 
             stockMovementService.createStockMovement(
-                    new StockMovementCreationRequest(
-                            inventory,
-                            MovementType.ORDER_RESERVED,
-                            -item.getQuantity(),
-                            "Order status changed to PROCESSING",
-                            orderId));
+                    StockMovementRequestFactory.orderReserved(inventory, orderId, item.getQuantity()));
 
         }
         order.markProcessing();
@@ -147,12 +141,7 @@ public class OrderService {
             inventoryService.fulfillReservedQuantity(item.getProduct().getId(), item.getQuantity());
             var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
             stockMovementService.createStockMovement(
-                    new StockMovementCreationRequest(
-                            inventory,
-                            MovementType.ORDER_FULFILLED,
-                            -item.getQuantity(),
-                            "Order status changed to SHIPPED",
-                            orderId));
+                    StockMovementRequestFactory.orderFulfilled(inventory, orderId, item.getQuantity()));
         }
         order.markShipped();
         return order;
@@ -189,12 +178,7 @@ public class OrderService {
                 inventoryService.cancelReservedQuantity(item.getProduct().getId(), item.getQuantity());
                 var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
                 stockMovementService.createStockMovement(
-                        new StockMovementCreationRequest(
-                                inventory,
-                                MovementType.ORDER_RELEASED,
-                                item.getQuantity(),
-                                "Order status changed to CANCELLED",
-                                orderId));
+                        StockMovementRequestFactory.orderReleased(inventory, orderId, item.getQuantity()));
                 inventoryService.updateLowQuantityFlag(inventory);
             }
         }
@@ -216,12 +200,7 @@ public class OrderService {
             inventoryService.addStock(item.getProduct().getId(), item.getQuantity());
             var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
             stockMovementService.createStockMovement(
-                    new StockMovementCreationRequest(
-                            inventory,
-                            MovementType.ORDER_RETURNED,
-                            item.getQuantity(),
-                            "Order status changed to RETURNED",
-                            orderId));
+                    StockMovementRequestFactory.orderReturned(inventory, orderId, item.getQuantity()));
         }
         order.markReturned();
         return order;
