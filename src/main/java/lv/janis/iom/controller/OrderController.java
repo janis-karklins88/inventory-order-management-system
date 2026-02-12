@@ -31,6 +31,7 @@ import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.dto.requests.OrderItemAddRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.service.OrderService;
+import lv.janis.iom.service.facade.ExternalOrderFacade;
 
 @Tag(name = "Orders", description = "Order management endpoints")
 @RestController
@@ -38,9 +39,11 @@ import lv.janis.iom.service.OrderService;
 public class OrderController {
 
         private final OrderService orderService;
+        private final ExternalOrderFacade externalOrderFacade;
 
-        public OrderController(OrderService orderService) {
+        public OrderController(OrderService orderService, ExternalOrderFacade externalOrderFacade) {
                 this.orderService = orderService;
+                this.externalOrderFacade = externalOrderFacade;
         }
 
         @Operation(summary = "Create order")
@@ -64,10 +67,17 @@ public class OrderController {
                         @ApiResponse(responseCode = "404", description = "One or more products not found")
         })
         @PostMapping("/external")
-        public ResponseEntity<CustomerOrderResponse> createExternalOrder(
+        public ResponseEntity<Void> createExternalOrder(
                         @Valid @RequestBody ExternalOrderIngestRequest request) {
-                var order = orderService.createExternalOrder(request);
-                return ResponseEntity.ok(CustomerOrderResponse.from(order));
+                Long orderId = externalOrderFacade.ingest(request);
+
+                URI location = ServletUriComponentsBuilder
+                                .fromCurrentContextPath()
+                                .path("/api/orders/{id}")
+                                .buildAndExpand(orderId)
+                                .toUri();
+
+                return ResponseEntity.accepted().location(location).build();
         }
 
         @Operation(summary = "Add item to order")
