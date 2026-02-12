@@ -15,6 +15,8 @@ import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
 import lv.janis.iom.entity.Product;
+import lv.janis.iom.enums.ExternalOrderSource;
+import lv.janis.iom.enums.FailureCode;
 import lv.janis.iom.enums.OrderStatus;
 import lv.janis.iom.factory.StockMovementRequestFactory;
 import lv.janis.iom.repository.CustomerOrderRepository;
@@ -24,6 +26,8 @@ import org.springframework.lang.NonNull;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.EntityManager;
+
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -214,6 +218,17 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public CustomerOrder findBySourceAndExternalOrderId(@NonNull ExternalOrderSource source,
+            @NonNull String externalOrderId) {
+        if (externalOrderId.isBlank()) {
+            throw new IllegalArgumentException("externalOrderId is required");
+        }
+        return customerOrderRepository.findBySourceAndExternalOrderId(source, externalOrderId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Order with source " + source + " and externalOrderId " + externalOrderId + " not found"));
+    }
+
+    @Transactional(readOnly = true)
     public Page<CustomerOrderResponse> getCustomerOrders(CustomerOrderFilter filter, @NonNull Pageable pageable) {
         var safeFilter = filter != null ? filter : new CustomerOrderFilter();
         var safePageable = capPageSize(pageable, 100);
@@ -227,60 +242,6 @@ public class OrderService {
         return customerOrderRepository.findAll(specs, safePageable).map(CustomerOrderResponse::from);
     }
 
-    @Transactional
-    public CustomerOrder createExternalOrder(ExternalOrderIngestRequest request) {
-        var existingOrder = customerOrderRepository.findBySourceAndExternalOrderId(
-                request.getSource(),
-                request.getExternalOrderId());
-        if (existingOrder.isPresent()) {
-            return existingOrder.get();
-        }
-        var order = CustomerOrder.create();
-        order.setSource(request.getSource());
-        order.setExternalOrderId(request.getExternalOrderId());
-        order.setShippingAddress(request.getShippingAddress());
-        // Sum quantities by product ID.
-        var itemRequests = request.getItems();
-        Map<Long, Integer> quantitiesByProductId = new HashMap<>();
-        for (var itemReq : itemRequests) {
-            quantitiesByProductId.merge(itemReq.getProductId(), itemReq.getQuantity(), Integer::sum);
-        }
-        Set<Long> productIds = quantitiesByProductId.keySet();
-        // Load products in bulk and ensure none are missing or deleted.
-        Map<Long, Product> productsById = new HashMap<>();
-        for (var product : productRepository.findAllByIdInAndIsDeletedFalse(productIds)) {
-            productsById.put(product.getId(), product);
-        }
-        if (productsById.size() != productIds.size()) {
-            var missingIds = new HashSet<>(productIds);
-            missingIds.removeAll(productsById.keySet());
-            throw new EntityNotFoundException("Products not found or deleted: " + missingIds);
-        }
-        // Build order items with the current price snapshot.
-        for (var entry : quantitiesByProductId.entrySet()) {
-            var product = productsById.get(entry.getKey());
-            var orderItem = OrderItem.createFor(product, entry.getValue(), product.getPrice());
-            order.addItem(orderItem);
-        }
-        // Save and rely on the unique constraint for idempotency.
-        try {
-            customerOrderRepository.saveAndFlush(order);
-        } catch (DataIntegrityViolationException ex) {
-            // Clear failed entity state to avoid flush errors after constraint violations.
-            entityManager.clear();
-            // If it already exists, return the existing order instead of failing.
-            return customerOrderRepository.findBySourceAndExternalOrderId(
-                    request.getSource(),
-                    request.getExternalOrderId())
-                    .orElseThrow(() -> new IllegalStateException(
-                            "Order from source " + request.getSource() + " with external ID "
-                                    + request.getExternalOrderId() + " already exists",
-                            ex));
-        }
-        return statusProcessing(
-                Objects.requireNonNull(order.getId(), "Order ID must be present after save"));
-    }
-
     private static void requireId(Long id, String name) {
         if (id == null) {
             throw new IllegalArgumentException(name + " is required");
@@ -292,6 +253,37 @@ public class OrderService {
             return PageRequest.of(pageable.getPageNumber(), maxSize, pageable.getSort());
         }
         return pageable;
+    }
+
+    @Transactional
+    public void markRejected(Long orderId,
+            FailureCode code,
+            String message) {
+
+        var order = getCustomerOrderById(orderId);
+
+        order.setStatus(OrderStatus.REJECTED);
+        order.setFailureCode(code);
+        order.setFailureMessage(message);
+        order.setFailedAt(Instant.now());
+
+        customerOrderRepository.save(order);
+    }
+
+    @Transactional
+    public void markFailed(Long orderId,
+            FailureCode code,
+            String message) {
+
+        var order = getCustomerOrderById(orderId);
+
+        order.setStatus(OrderStatus.FAILED);
+        order.setFailureCode(code);
+        order.setFailureMessage(message);
+        order.setFailedAt(Instant.now());
+        order.incrementRetryCount();
+
+        customerOrderRepository.save(order);
     }
 
 }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -30,6 +31,8 @@ import lv.janis.iom.dto.filters.CustomerOrderFilter;
 import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.dto.requests.OrderItemAddRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
+import lv.janis.iom.dto.response.ExternalOrderStatusResponse;
+import lv.janis.iom.enums.ExternalOrderSource;
 import lv.janis.iom.service.OrderService;
 import lv.janis.iom.service.facade.ExternalOrderFacade;
 
@@ -62,7 +65,7 @@ public class OrderController {
 
         @Operation(summary = "Create external order", description = "Idempotent by (source, externalOrderId). Duplicate requests return the existing order.")
         @ApiResponses({
-                        @ApiResponse(responseCode = "200", description = "Order created or existing order returned"),
+                        @ApiResponse(responseCode = "202", description = "Order accepted for asynchronous processing"),
                         @ApiResponse(responseCode = "400", description = "Invalid request"),
                         @ApiResponse(responseCode = "404", description = "One or more products not found")
         })
@@ -191,4 +194,15 @@ public class OrderController {
                 var page = orderService.getCustomerOrders(filter, pageable);
                 return ResponseEntity.ok(page);
         }
+
+        @GetMapping("/external/status")
+        public ResponseEntity<ExternalOrderStatusResponse> getExternalStatus(
+                @RequestParam ExternalOrderSource source,
+                @RequestParam String externalOrderId) {
+
+                var order = orderService.findBySourceAndExternalOrderId(source, externalOrderId);
+
+                return ResponseEntity.ok(ExternalOrderStatusResponse.from(order));
+        }
+
 }

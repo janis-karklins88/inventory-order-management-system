@@ -1,9 +1,9 @@
 package lv.janis.iom.factory;
 
 import java.util.Objects;
+import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.enums.MovementType;
-import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 
 public final class StockMovementRequestFactory {
 

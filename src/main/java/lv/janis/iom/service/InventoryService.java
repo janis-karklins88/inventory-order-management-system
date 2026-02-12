@@ -21,6 +21,8 @@ import lv.janis.iom.entity.Alert;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.NotificationTask;
 import lv.janis.iom.entity.Product;
+import lv.janis.iom.enums.FailureCode;
+import lv.janis.iom.exception.BusinessException;
 import lv.janis.iom.factory.StockMovementRequestFactory;
 import lv.janis.iom.repository.AlertRepository;
 import lv.janis.iom.repository.InventoryRepository;
@@ -113,7 +115,9 @@ public class InventoryService {
         requireProductId(productId);
         requireQuantity(quantityToReserve, "quantityToReserve");
         var inventory = inventoryRepository.findByProductId(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Inventory for product id " + productId + " not found"));
+                .orElseThrow(() -> new BusinessException(
+                        FailureCode.INVENTORY_NOT_FOUND,
+                        "Inventory for product id " + productId + " not found"));
         boolean wasLowStock = inventory.isLowQuantity();
         inventory.reserveQuantity(quantityToReserve);
         updateLowQuantityFlag(inventory);

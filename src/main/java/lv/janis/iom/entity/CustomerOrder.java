@@ -68,7 +68,7 @@ public class CustomerOrder {
     private String failureMessage;
 
     @Column(name = "retry_count", nullable = true)
-    private Integer retryCount;
+    private Integer retryCount = 0;
 
     @Column(name = "failed_at", nullable = true)
     private Instant failedAt;
@@ -142,8 +142,8 @@ public class CustomerOrder {
         return retryCount;
     }
 
-    public void setRetryCount(Integer retryCount) {
-        this.retryCount = retryCount;
+    public void incrementRetryCount() {
+        this.retryCount++;
     }
 
     public Instant getFailedAt() {
@@ -152,6 +152,10 @@ public class CustomerOrder {
 
     public void setFailedAt(Instant failedAt) {
         this.failedAt = failedAt;
+    }
+
+    public void setStatus(OrderStatus status) {
+        this.status = status;
     }
 
     public void setSource(ExternalOrderSource source) {

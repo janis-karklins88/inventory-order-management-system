@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import lv.janis.iom.enums.FailureCode;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -48,6 +49,30 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex,
                                                           HttpServletRequest req) {
+        return ResponseEntity.badRequest()
+            .body(ApiError.badRequest(req.getRequestURI(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiError> handleBusiness(BusinessException ex,
+                                                   HttpServletRequest req) {
+        FailureCode code = ex.getCode();
+        if (code == FailureCode.PRODUCT_NOT_FOUND) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiError.notFound(req.getRequestURI(), ex.getMessage()));
+        }
+        if (code == FailureCode.INVENTORY_NOT_FOUND) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiError.notFound(req.getRequestURI(), ex.getMessage()));
+        }
+        if (code == FailureCode.OUT_OF_STOCK) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.conflict(req.getRequestURI(), ex.getMessage()));
+        }
+        if (code == FailureCode.TECHNICAL_ERROR) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiError.internal(req.getRequestURI(), ex.getMessage()));
+        }
         return ResponseEntity.badRequest()
             .body(ApiError.badRequest(req.getRequestURI(), ex.getMessage()));
     }

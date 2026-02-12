@@ -7,6 +7,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.*;
+import lv.janis.iom.enums.FailureCode;
+import lv.janis.iom.exception.BusinessException;
 
 @Entity(name = "Inventory")
 @EntityListeners(AuditingEntityListener.class)
@@ -146,7 +148,7 @@ public class Inventory {
     public void reserveQuantity(int amount) {
         if (amount <= 0) throw new IllegalArgumentException("amount must be positive");
         if (amount > this.quantity - this.reservedQuantity) {
-            throw new IllegalArgumentException("not enough available quantity to reserve");
+            throw new BusinessException(FailureCode.OUT_OF_STOCK, "not enough available quantity to reserve");
         }
         this.reservedQuantity += amount;
     }
