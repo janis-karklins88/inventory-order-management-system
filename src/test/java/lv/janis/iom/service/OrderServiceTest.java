@@ -1,15 +1,12 @@
 package lv.janis.iom.service;
 
 import jakarta.persistence.EntityNotFoundException;
-import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
-import lv.janis.iom.dto.requests.ExternalOrderItemRequest;
 import lv.janis.iom.dto.requests.StockMovementCreationRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.Inventory;
 import lv.janis.iom.entity.OrderItem;
 import lv.janis.iom.entity.Product;
-import lv.janis.iom.enums.ExternalOrderSource;
 import lv.janis.iom.enums.OrderStatus;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.ProductRepository;
@@ -19,7 +16,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +24,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import jakarta.persistence.EntityManager;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -303,99 +298,6 @@ public class OrderServiceTest {
     verify(customerOrderRepository).findAll(any(Specification.class), pageableCaptor.capture());
     assertEquals(100, pageableCaptor.getValue().getPageSize());
     assertEquals(sort, pageableCaptor.getValue().getSort());
-  }
-
-  @Test
-  void createExternalOrder_missingProduct_throws() {
-    var request = externalOrderRequest(
-        ExternalOrderSource.WEB_SHOP,
-        "EXT-1",
-        "Addr",
-        List.of(externalItem(1L, 2)));
-    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-1"))
-        .thenReturn(Optional.empty());
-    when(productRepository.findAllByIdInAndIsDeletedFalse(Set.of(1L))).thenReturn(List.of());
-
-    var ex = assertThrows(EntityNotFoundException.class,
-        () -> orderService.createExternalOrder(request));
-
-    assertTrue(ex.getMessage().contains("Products not found or deleted"));
-  }
-
-  @Test
-  void createExternalOrder_dataIntegrity_returnsExisting() {
-    var request = externalOrderRequest(
-        ExternalOrderSource.WEB_SHOP,
-        "EXT-1",
-        "Addr",
-        List.of(externalItem(1L, 2)));
-    var product = product(1L, "SKU-1", new BigDecimal("9.99"));
-    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-1"))
-        .thenReturn(Optional.empty());
-    when(productRepository.findAllByIdInAndIsDeletedFalse(Set.of(1L))).thenReturn(List.of(product));
-    when(customerOrderRepository.saveAndFlush(any(CustomerOrder.class)))
-        .thenThrow(new DataIntegrityViolationException("dupe"));
-    var existing = CustomerOrder.create();
-    setId(existing, 99L);
-    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-1"))
-        .thenReturn(Optional.empty(), Optional.of(existing));
-
-    var result = orderService.createExternalOrder(request);
-
-    assertSame(existing, result);
-    verifyNoInteractions(inventoryService, stockMovementService);
-  }
-
-  @Test
-  void createExternalOrder_ok_mergesQuantities_andProcesses() {
-    var request = externalOrderRequest(
-        ExternalOrderSource.WEB_SHOP,
-        "EXT-1",
-        "Addr",
-        List.of(
-            externalItem(1L, 2),
-            externalItem(1L, 3)));
-    var product = product(1L, "SKU-1", new BigDecimal("9.99"));
-    var savedOrderRef = new AtomicReference<CustomerOrder>();
-    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-1"))
-        .thenReturn(Optional.empty());
-    when(productRepository.findAllByIdInAndIsDeletedFalse(Set.of(1L))).thenReturn(List.of(product));
-    when(customerOrderRepository.saveAndFlush(any(CustomerOrder.class)))
-        .thenAnswer(invocation -> {
-          var order = invocation.getArgument(0, CustomerOrder.class);
-          setId(order, 10L);
-          savedOrderRef.set(order);
-          return order;
-        });
-    when(customerOrderRepository.findById(10L)).thenAnswer(invocation -> Optional.of(savedOrderRef.get()));
-    when(inventoryService.reserveStock(1L, 5))
-        .thenReturn(Inventory.createFor(product, 10, 1, 2));
-
-    var result = orderService.createExternalOrder(request);
-
-    assertEquals(OrderStatus.PROCESSING, result.getStatus());
-    verify(inventoryService).reserveStock(1L, 5);
-    verify(stockMovementService).createStockMovement(any(StockMovementCreationRequest.class));
-  }
-
-  private static ExternalOrderItemRequest externalItem(Long productId, int quantity) {
-    var item = new ExternalOrderItemRequest();
-    setField(item, "productId", productId);
-    setField(item, "quantity", quantity);
-    return item;
-  }
-
-  private static ExternalOrderIngestRequest externalOrderRequest(
-      ExternalOrderSource source,
-      String externalOrderId,
-      String shippingAddress,
-      List<ExternalOrderItemRequest> items) {
-    var request = new ExternalOrderIngestRequest();
-    setField(request, "source", source);
-    setField(request, "externalOrderId", externalOrderId);
-    setField(request, "shippingAddress", shippingAddress);
-    setField(request, "items", items);
-    return request;
   }
 
   private static Product product(Long id, String sku, BigDecimal price) {

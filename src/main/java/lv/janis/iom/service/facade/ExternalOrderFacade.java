@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +15,10 @@ import jakarta.transaction.Transactional;
 import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
+import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.entity.Product;
-import lv.janis.iom.event.ExternalOrderIngestedEvent;
 import lv.janis.iom.repository.CustomerOrderRepository;
+import lv.janis.iom.repository.OutboxEventRepository;
 import lv.janis.iom.repository.ProductRepository;
 
 @Service
@@ -27,18 +27,18 @@ public class ExternalOrderFacade {
   private final CustomerOrderRepository customerOrderRepository;
   private final ProductRepository productRepository;
   private final EntityManager entityManager;
-  private final ApplicationEventPublisher eventPublisher;
+  private final OutboxEventRepository outboxRepo;
 
   public ExternalOrderFacade(
       CustomerOrderRepository customerOrderRepository,
       ProductRepository productRepository,
       EntityManager entityManager,
-      ApplicationEventPublisher eventPublisher) {
+      OutboxEventRepository outboxRepo) {
 
     this.customerOrderRepository = customerOrderRepository;
     this.productRepository = productRepository;
     this.entityManager = entityManager;
-    this.eventPublisher = eventPublisher;
+    this.outboxRepo = outboxRepo;
   }
 
   @Transactional
@@ -71,7 +71,10 @@ public class ExternalOrderFacade {
     }
 
     Long orderId = Objects.requireNonNull(order.getId(), "Order ID must be present after save");
-    eventPublisher.publishEvent(new ExternalOrderIngestedEvent(orderId));
+    outboxRepo.save(OutboxEvent.pending(
+        "EXTERNAL_ORDER_INGESTED",
+        order.getId(),
+        "{\"orderId\":" + order.getId() + "}"));
 
     return orderId;
 

@@ -6,15 +6,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import lv.janis.iom.dto.filters.CustomerOrderFilter;
-import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
-import lv.janis.iom.entity.Product;
 import lv.janis.iom.enums.ExternalOrderSource;
 import lv.janis.iom.enums.FailureCode;
 import lv.janis.iom.enums.OrderStatus;
@@ -28,10 +25,6 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.EntityManager;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -41,7 +34,6 @@ public class OrderService {
     private final InventoryService inventoryService;
     private final ProductRepository productRepository;
     private final StockMovementService stockMovementService;
-    private final EntityManager entityManager;
 
     public OrderService(
             CustomerOrderRepository customerOrderRepository,
@@ -55,7 +47,6 @@ public class OrderService {
         this.productRepository = productRepository;
         this.inventoryService = inventoryService;
         this.stockMovementService = stockMovementService;
-        this.entityManager = entityManager;
 
     }
 

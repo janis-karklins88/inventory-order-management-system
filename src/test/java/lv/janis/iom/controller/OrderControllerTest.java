@@ -7,6 +7,7 @@ import lv.janis.iom.entity.OrderItem;
 import lv.janis.iom.entity.Product;
 import lv.janis.iom.enums.ExternalOrderSource;
 import lv.janis.iom.service.OrderService;
+import lv.janis.iom.service.facade.ExternalOrderFacade;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -41,6 +42,8 @@ public class OrderControllerTest {
 
   @MockitoBean
   OrderService orderService;
+  @MockitoBean
+  ExternalOrderFacade externalOrderFacade;
 
   @Test
   void createOrder_returnsCreated() throws Exception {
@@ -57,9 +60,7 @@ public class OrderControllerTest {
 
   @Test
   void createExternalOrder_returnsOk() throws Exception {
-    var order = CustomerOrder.create();
-    setId(order, 2L);
-    when(orderService.createExternalOrder(any(ExternalOrderIngestRequest.class))).thenReturn(order);
+    when(externalOrderFacade.ingest(any(ExternalOrderIngestRequest.class))).thenReturn(2L);
 
     mockMvc.perform(post("/api/orders/external")
         .contentType(MediaType.APPLICATION_JSON)
@@ -71,9 +72,8 @@ public class OrderControllerTest {
               "items":[{"productId":1,"quantity":2}]
             }
             """))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(2))
-        .andExpect(jsonPath("$.status").value("CREATED"));
+        .andExpect(status().isAccepted())
+        .andExpect(header().string("Location", endsWith("/api/orders/2")));
   }
 
   @Test

@@ -44,11 +44,10 @@ class OrderFlowE2ETest {
     long productId = createProduct();
     createInventory(productId);
 
-    JsonNode first = createExternalOrder("EXT-E2E-1", productId, 2);
-    JsonNode second = createExternalOrder("EXT-E2E-1", productId, 2);
+    long first = createExternalOrder("EXT-E2E-1", productId, 2);
+    long second = createExternalOrder("EXT-E2E-1", productId, 2);
 
-    assertEquals(first.get("id").asLong(), second.get("id").asLong());
-    assertEquals("PROCESSING", second.get("status").asText());
+    assertEquals(first, second);
   }
 
   private long createProduct() throws Exception {
@@ -93,8 +92,8 @@ class OrderFlowE2ETest {
         .andExpect(status().isOk());
   }
 
-  private JsonNode createExternalOrder(String externalOrderId, long productId, int quantity) throws Exception {
-    var response = mockMvc.perform(post("/api/orders/external")
+  private long createExternalOrder(String externalOrderId, long productId, int quantity) throws Exception {
+    var location = mockMvc.perform(post("/api/orders/external")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
             {
@@ -104,11 +103,11 @@ class OrderFlowE2ETest {
               "items":[{"productId":%d,"quantity":%d}]
             }
             """.formatted(externalOrderId, productId, quantity)))
-        .andExpect(status().isOk())
+        .andExpect(status().isAccepted())
         .andReturn()
         .getResponse()
-        .getContentAsString();
-    return objectMapper.readTree(response);
+        .getHeader("Location");
+    return Long.parseLong(location.substring(location.lastIndexOf('/') + 1));
   }
 
   private JsonNode updateStatus(long orderId, String status) throws Exception {
