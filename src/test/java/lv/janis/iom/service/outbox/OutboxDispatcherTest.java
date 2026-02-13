@@ -6,6 +6,7 @@ import lv.janis.iom.enums.OutboxEventStatus;
 import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.exception.BusinessException;
 import lv.janis.iom.repository.OutboxEventRepository;
+import lv.janis.iom.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +39,8 @@ class OutboxDispatcherTest {
   OutboxEventRepository outboxEventRepository;
   @Mock
   OutboxHandlerRegistry outboxHandlerRegistry;
+  @Mock
+  OrderService orderService;
 
   @InjectMocks
   OutboxDispatcher dispatcher;
@@ -97,6 +101,7 @@ class OutboxDispatcherTest {
     assertTrue(saved.getAvailableAt().isAfter(start));
     assertNull(saved.getLockedAt());
     assertNull(saved.getLockedBy());
+    verify(orderService, never()).markFailed(any(), any(), anyString());
   }
 
   @Test
@@ -112,6 +117,10 @@ class OutboxDispatcherTest {
     OutboxEvent saved = captor.getValue();
     assertEquals(OutboxEventStatus.DEAD, saved.getStatus());
     assertEquals(5, saved.getAttempts());
+    verify(orderService).markFailed(
+        eq(10L),
+        eq(FailureCode.TECHNICAL_ERROR),
+        eq("Outbox delivery failed after max retries"));
   }
 
   @Test

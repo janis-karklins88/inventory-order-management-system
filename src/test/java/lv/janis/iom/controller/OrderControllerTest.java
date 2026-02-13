@@ -12,6 +12,7 @@ import lv.janis.iom.service.facade.ExternalOrderFacade;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -27,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -73,7 +75,9 @@ public class OrderControllerTest {
             }
             """))
         .andExpect(status().isAccepted())
-        .andExpect(header().string("Location", endsWith("/api/orders/2")));
+        .andExpect(header().string("Location", endsWith("/api/orders/2")))
+        .andExpect(header().string("Link",
+            containsString("/api/orders/external/status?source=WEB_SHOP&externalOrderId=EXT-1")));
   }
 
   @Test
@@ -110,7 +114,7 @@ public class OrderControllerTest {
     when(orderService.statusShipped(5L)).thenReturn(order);
     when(orderService.statusDelivered(5L)).thenReturn(order);
     when(orderService.statusCancelled(5L)).thenReturn(order);
-    when(orderService.statusReturned(5L)).thenReturn(order);
+    when(orderService.statusReturned(eq(5L), isNull())).thenReturn(order);
 
     mockMvc.perform(post("/api/orders/5/processing"))
         .andExpect(status().isOk());
@@ -122,6 +126,21 @@ public class OrderControllerTest {
         .andExpect(status().isOk());
     mockMvc.perform(post("/api/orders/5/returned"))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void statusReturned_withProductIds_returnsOk() throws Exception {
+    var order = CustomerOrder.create();
+    setId(order, 8L);
+    when(orderService.statusReturned(eq(8L), eq(List.of(1L, 2L)))).thenReturn(order);
+
+    mockMvc.perform(post("/api/orders/8/returned")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {"productIds":[1,2]}
+            """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(8));
   }
 
   @Test

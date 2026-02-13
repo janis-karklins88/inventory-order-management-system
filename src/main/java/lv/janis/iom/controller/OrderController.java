@@ -30,6 +30,7 @@ import jakarta.validation.Valid;
 import lv.janis.iom.dto.filters.CustomerOrderFilter;
 import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.dto.requests.OrderItemAddRequest;
+import lv.janis.iom.dto.requests.OrderReturnRequest;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.dto.response.ExternalOrderStatusResponse;
 import lv.janis.iom.enums.ExternalOrderSource;
@@ -80,7 +81,18 @@ public class OrderController {
                                 .buildAndExpand(orderId)
                                 .toUri();
 
-                return ResponseEntity.accepted().location(location).build();
+                URI statusLocation = ServletUriComponentsBuilder
+                                .fromCurrentContextPath()
+                                .path("/api/orders/external/status")
+                                .queryParam("source", request.getSource())
+                                .queryParam("externalOrderId", request.getExternalOrderId())
+                                .build()
+                                .toUri();
+
+                return ResponseEntity.accepted()
+                                .location(location)
+                                .header("Link", "<" + statusLocation + ">; rel=\"status\"")
+                                .build();
         }
 
         @Operation(summary = "Add item to order")
@@ -172,8 +184,10 @@ public class OrderController {
         })
         @PostMapping("/{orderId}/returned")
         public ResponseEntity<CustomerOrderResponse> statusReturned(
-                        @Parameter(description = "Order id", example = "1001") @PathVariable @NonNull Long orderId) {
-                var order = orderService.statusReturned(orderId);
+                        @Parameter(description = "Order id", example = "1001") @PathVariable @NonNull Long orderId,
+                        @RequestBody(required = false) OrderReturnRequest request) {
+                var productIds = request != null ? request.getProductIds() : null;
+                var order = orderService.statusReturned(orderId, productIds);
                 return ResponseEntity.ok(CustomerOrderResponse.from(order));
         }
 

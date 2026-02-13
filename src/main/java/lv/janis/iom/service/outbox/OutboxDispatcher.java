@@ -8,9 +8,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import lv.janis.iom.entity.OutboxEvent;
+import lv.janis.iom.enums.FailureCode;
 import lv.janis.iom.enums.OutboxEventStatus;
+import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.exception.BusinessException;
 import lv.janis.iom.repository.OutboxEventRepository;
+import lv.janis.iom.service.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,15 +23,17 @@ public class OutboxDispatcher {
 
   private final OutboxEventRepository repo;
   private final OutboxHandlerRegistry handlers;
+  private final OrderService orderService;
   private final String lockedBy;
 
   private final int batchSize = 20;
   private final int maxAttempts = 5;
   private final int processingLockTimeoutSeconds = 300;
 
-  public OutboxDispatcher(OutboxEventRepository repo, OutboxHandlerRegistry handlers) {
+  public OutboxDispatcher(OutboxEventRepository repo, OutboxHandlerRegistry handlers, OrderService orderService) {
     this.repo = repo;
     this.handlers = handlers;
+    this.orderService = orderService;
     this.lockedBy = java.util.UUID.randomUUID().toString();
   }
 
@@ -73,13 +78,25 @@ public class OutboxDispatcher {
       log.error("Outbox processing failed id={} type={}", event.getId(), event.getEventType(), ex);
 
       event.setAttempts(event.getAttempts() + 1);
-      event.setStatus(event.getAttempts() >= maxAttempts ? OutboxEventStatus.DEAD : OutboxEventStatus.FAILED);
+      boolean isDead = event.getAttempts() >= maxAttempts;
+      event.setStatus(isDead ? OutboxEventStatus.DEAD : OutboxEventStatus.FAILED);
       event.setLastError("Unexpected processing error");
 
       // simple backoff strategy: next attempt after 2^attempts seconds, capped at 5
       // minutes
       long delaySeconds = Math.min(300, (long) Math.pow(2, Math.min(10, event.getAttempts())));
       event.setAvailableAt(Instant.now().plusSeconds(delaySeconds));
+
+      if (isDead && OutboxEventType.EXTERNAL_ORDER_INGESTED.name().equals(event.getEventType())) {
+        try {
+          orderService.markFailed(
+              event.getAggregatedId(),
+              FailureCode.TECHNICAL_ERROR,
+              "Outbox delivery failed after max retries");
+        } catch (Exception markFailedEx) {
+          log.error("Failed to mark order as FAILED for dead outbox id={}", event.getId(), markFailedEx);
+        }
+      }
     } finally {
       event.setLockedAt(null);
       event.setLockedBy(null);

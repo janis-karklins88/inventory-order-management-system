@@ -264,12 +264,47 @@ public class OrderServiceTest {
     when(inventoryService.getInventoryByProductId(2L))
         .thenReturn(Inventory.createFor(product, 10, 1, 2));
 
-    var result = orderService.statusReturned(1L);
+    var result = orderService.statusReturned(1L, null);
 
     assertSame(order, result);
     assertEquals(OrderStatus.RETURNED, result.getStatus());
     verify(inventoryService).addStock(2L, 2);
     verify(stockMovementService).createStockMovement(any(StockMovementCreationRequest.class));
+  }
+
+  @Test
+  void statusReturned_partial_returnsOnlyRequestedProducts() {
+    var order = CustomerOrder.create();
+    setId(order, 1L);
+    var productA = product(2L, "SKU-2", new BigDecimal("9.99"));
+    var productB = product(3L, "SKU-3", new BigDecimal("19.99"));
+    order.addItem(OrderItem.createFor(productA, 2, productA.getPrice()));
+    order.addItem(OrderItem.createFor(productB, 1, productB.getPrice()));
+    setStatus(order, OrderStatus.DELIVERED);
+    when(customerOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+    when(inventoryService.getInventoryByProductId(2L))
+        .thenReturn(Inventory.createFor(productA, 10, 1, 2));
+
+    var result = orderService.statusReturned(1L, List.of(2L));
+
+    assertSame(order, result);
+    assertEquals(OrderStatus.RETURNED, result.getStatus());
+    verify(inventoryService).addStock(2L, 2);
+    verify(inventoryService, never()).addStock(3L, 1);
+  }
+
+  @Test
+  void statusReturned_partial_missingProduct_throws() {
+    var order = CustomerOrder.create();
+    setId(order, 1L);
+    var productA = product(2L, "SKU-2", new BigDecimal("9.99"));
+    order.addItem(OrderItem.createFor(productA, 2, productA.getPrice()));
+    setStatus(order, OrderStatus.DELIVERED);
+    when(customerOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+    var ex = assertThrows(EntityNotFoundException.class, () -> orderService.statusReturned(1L, List.of(999L)));
+
+    assertEquals("Products not found in order: [999]", ex.getMessage());
   }
 
   @Test

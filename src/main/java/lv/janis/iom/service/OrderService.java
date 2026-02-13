@@ -24,7 +24,10 @@ import org.springframework.lang.NonNull;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.EntityManager;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -183,6 +186,11 @@ public class OrderService {
 
     @Transactional
     public CustomerOrder statusReturned(@NonNull Long orderId) {
+        return statusReturned(orderId, null);
+    }
+
+    @Transactional
+    public CustomerOrder statusReturned(@NonNull Long orderId, List<Long> productIds) {
         requireId(orderId, "orderId");
         var order = customerOrderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Order with id " + orderId + " not found"));
@@ -191,7 +199,32 @@ public class OrderService {
             throw new IllegalStateException("Only orders in DELIVERED status can be moved to RETURNED");
         }
 
-        for (var item : order.getItems()) {
+        Set<Long> requestedProductIds = new HashSet<>();
+        if (productIds != null) {
+            for (Long productId : productIds) {
+                requireId(productId, "productId");
+                requestedProductIds.add(productId);
+            }
+        }
+
+        List<OrderItem> itemsToReturn;
+        if (requestedProductIds.isEmpty()) {
+            itemsToReturn = new ArrayList<>(order.getItems());
+        } else {
+            itemsToReturn = order.getItems().stream()
+                    .filter(item -> requestedProductIds.contains(item.getProduct().getId()))
+                    .toList();
+
+            Set<Long> foundProductIds = itemsToReturn.stream()
+                    .map(item -> item.getProduct().getId())
+                    .collect(java.util.stream.Collectors.toSet());
+            requestedProductIds.removeAll(foundProductIds);
+            if (!requestedProductIds.isEmpty()) {
+                throw new EntityNotFoundException("Products not found in order: " + requestedProductIds);
+            }
+        }
+
+        for (var item : itemsToReturn) {
             inventoryService.addStock(item.getProduct().getId(), item.getQuantity());
             var inventory = inventoryService.getInventoryByProductId(item.getProduct().getId());
             stockMovementService.createStockMovement(
