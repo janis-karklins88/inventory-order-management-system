@@ -12,17 +12,19 @@ import lv.janis.iom.dto.filters.CustomerOrderFilter;
 import lv.janis.iom.dto.response.CustomerOrderResponse;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
+import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.enums.ExternalOrderSource;
 import lv.janis.iom.enums.FailureCode;
 import lv.janis.iom.enums.OrderStatus;
+import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.factory.StockMovementRequestFactory;
 import lv.janis.iom.repository.CustomerOrderRepository;
+import lv.janis.iom.repository.OutboxEventRepository;
 import lv.janis.iom.repository.ProductRepository;
 import lv.janis.iom.repository.specification.OrderSpecifications;
 import org.springframework.lang.NonNull;
 
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.EntityManager;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -37,19 +39,21 @@ public class OrderService {
     private final InventoryService inventoryService;
     private final ProductRepository productRepository;
     private final StockMovementService stockMovementService;
+    private final OutboxEventRepository outboxRepo;
 
     public OrderService(
             CustomerOrderRepository customerOrderRepository,
             ProductRepository productRepository,
             InventoryService inventoryService,
             StockMovementService stockMovementService,
-            EntityManager entityManager
+            OutboxEventRepository outboxRepo
 
     ) {
         this.customerOrderRepository = customerOrderRepository;
         this.productRepository = productRepository;
         this.inventoryService = inventoryService;
         this.stockMovementService = stockMovementService;
+        this.outboxRepo = outboxRepo;
 
     }
 
@@ -292,6 +296,10 @@ public class OrderService {
         order.setFailedAt(Instant.now());
 
         customerOrderRepository.save(order);
+        outboxRepo.save(OutboxEvent.pending(
+                OutboxEventType.EXTERNAL_ORDER_REJECTED,
+                order.getId(),
+                "{\"orderId\":" + order.getId() + "}"));
     }
 
     @Transactional

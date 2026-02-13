@@ -92,6 +92,7 @@ class OrderFlowE2ETest {
         .andExpect(status().isOk());
   }
 
+  @SuppressWarnings("null")
   private long createExternalOrder(String externalOrderId, long productId, int quantity) throws Exception {
     var location = mockMvc.perform(post("/api/orders/external")
         .contentType(MediaType.APPLICATION_JSON)

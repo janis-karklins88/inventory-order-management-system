@@ -1,0 +1,12 @@
+{"properties": [
+  {
+    "name": "external-order.webhook.base-url",
+    "type": "java.lang.String",
+    "description": "Base URL of the external system that receives rejected-order webhook callbacks, for example https://partner.example.com."
+  },
+  {
+    "name": "external-order.webhook.rejected-path",
+    "type": "java.lang.String",
+    "description": "Path template appended to base-url for rejected-order callbacks. Supports {source} placeholder, for example /webhooks/external-orders/{source}/rejected."
+  }
+]}
