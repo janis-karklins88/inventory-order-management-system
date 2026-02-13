@@ -3,6 +3,7 @@ package lv.janis.iom.service.outbox;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.enums.FailureCode;
+import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.exception.BusinessException;
 import lv.janis.iom.service.OrderService;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class ExternalOrderOutboxHandlerTest {
 
   @Test
   void handle_createdOrder_callsStatusProcessing() {
-    OutboxEvent event = OutboxEvent.pending("EXTERNAL_ORDER_INGESTED", 10L, "{\"orderId\":10}");
+    OutboxEvent event = OutboxEvent.pending(OutboxEventType.EXTERNAL_ORDER_INGESTED, 10L, "{\"orderId\":10}");
     CustomerOrder order = CustomerOrder.create();
     when(orderService.getCustomerOrderById(10L)).thenReturn(order);
 
@@ -38,7 +39,7 @@ class ExternalOrderOutboxHandlerTest {
 
   @Test
   void handle_nonCreatedOrder_noop() {
-    OutboxEvent event = OutboxEvent.pending("EXTERNAL_ORDER_INGESTED", 11L, "{\"orderId\":11}");
+    OutboxEvent event = OutboxEvent.pending(OutboxEventType.EXTERNAL_ORDER_INGESTED, 11L, "{\"orderId\":11}");
     CustomerOrder order = CustomerOrder.create();
     order.markProcessing();
     when(orderService.getCustomerOrderById(11L)).thenReturn(order);
@@ -51,7 +52,7 @@ class ExternalOrderOutboxHandlerTest {
 
   @Test
   void handle_businessException_marksRejectedAndRethrows() {
-    OutboxEvent event = OutboxEvent.pending("EXTERNAL_ORDER_INGESTED", 12L, "{\"orderId\":12}");
+    OutboxEvent event = OutboxEvent.pending(OutboxEventType.EXTERNAL_ORDER_INGESTED, 12L, "{\"orderId\":12}");
     CustomerOrder order = CustomerOrder.create();
     BusinessException businessException = new BusinessException(FailureCode.OUT_OF_STOCK, "no stock");
     when(orderService.getCustomerOrderById(12L)).thenReturn(order);
@@ -62,4 +63,3 @@ class ExternalOrderOutboxHandlerTest {
     verify(orderService).markRejected(12L, FailureCode.OUT_OF_STOCK, "no stock");
   }
 }
-

@@ -9,6 +9,7 @@ import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.entity.Product;
 import lv.janis.iom.enums.ExternalOrderSource;
 import lv.janis.iom.enums.OutboxEventStatus;
+import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.OutboxEventRepository;
 import lv.janis.iom.repository.ProductRepository;
@@ -70,7 +71,7 @@ class ExternalOrderFacadeTest {
     var eventCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
     verify(outboxEventRepository).save(eventCaptor.capture());
     OutboxEvent event = eventCaptor.getValue();
-    assertEquals("EXTERNAL_ORDER_INGESTED", event.getEventType());
+    assertEquals(OutboxEventType.EXTERNAL_ORDER_INGESTED.name(), event.getEventType());
     assertEquals(77L, event.getAggregatedId());
     assertEquals(OutboxEventStatus.PENDING, event.getStatus());
     assertEquals("{\"orderId\":77}", event.getPayload());
@@ -159,4 +160,3 @@ class ExternalOrderFacadeTest {
     }
   }
 }
-

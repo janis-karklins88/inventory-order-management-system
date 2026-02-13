@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lv.janis.iom.enums.OutboxEventStatus;
+import lv.janis.iom.enums.OutboxEventType;
 
 @Entity(name = "OutboxEvent")
 @Table(name = "outbox_events")
@@ -52,6 +53,13 @@ public class OutboxEvent {
   private Instant processedAt;
 
   protected OutboxEvent() {
+  }
+
+  public static OutboxEvent pending(
+      OutboxEventType eventType,
+      Long aggregatedId,
+      String payload) {
+    return pending(eventType.name(), aggregatedId, payload);
   }
 
   public static OutboxEvent pending(

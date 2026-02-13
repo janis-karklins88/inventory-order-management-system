@@ -17,6 +17,7 @@ import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
 import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.entity.Product;
+import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.OutboxEventRepository;
 import lv.janis.iom.repository.ProductRepository;
@@ -72,7 +73,7 @@ public class ExternalOrderFacade {
 
     Long orderId = Objects.requireNonNull(order.getId(), "Order ID must be present after save");
     outboxRepo.save(OutboxEvent.pending(
-        "EXTERNAL_ORDER_INGESTED",
+        OutboxEventType.EXTERNAL_ORDER_INGESTED,
         order.getId(),
         "{\"orderId\":" + order.getId() + "}"));
 

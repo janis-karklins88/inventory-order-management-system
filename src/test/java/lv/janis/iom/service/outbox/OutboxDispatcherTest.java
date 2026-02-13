@@ -3,6 +3,7 @@ package lv.janis.iom.service.outbox;
 import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.enums.FailureCode;
 import lv.janis.iom.enums.OutboxEventStatus;
+import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.exception.BusinessException;
 import lv.janis.iom.repository.OutboxEventRepository;
 import org.junit.jupiter.api.Test;
@@ -131,7 +132,7 @@ class OutboxDispatcherTest {
   }
 
   private static OutboxEvent event(Long id, OutboxEventStatus status, int attempts) {
-    OutboxEvent event = OutboxEvent.pending("EXTERNAL_ORDER_INGESTED", 10L, "{\"orderId\":10}");
+    OutboxEvent event = OutboxEvent.pending(OutboxEventType.EXTERNAL_ORDER_INGESTED, 10L, "{\"orderId\":10}");
     event.setId(id);
     event.setStatus(status);
     event.setAttempts(attempts);

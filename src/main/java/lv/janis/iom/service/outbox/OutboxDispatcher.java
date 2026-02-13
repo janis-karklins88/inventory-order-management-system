@@ -29,7 +29,7 @@ public class OutboxDispatcher {
   public OutboxDispatcher(OutboxEventRepository repo, OutboxHandlerRegistry handlers) {
     this.repo = repo;
     this.handlers = handlers;
-    this.lockedBy = java.util.UUID.randomUUID().toString(); // or hostname
+    this.lockedBy = java.util.UUID.randomUUID().toString();
   }
 
   @Scheduled(fixedDelay = 20000)
@@ -57,14 +57,14 @@ public class OutboxDispatcher {
     OutboxEvent event = repo.findById(outboxId).orElseThrow();
 
     try {
-      handlers.handle(event); // calls the right handler by eventType
+      handlers.handle(event);
 
       event.setStatus(OutboxEventStatus.PROCESSED);
       event.setProcessedAt(Instant.now());
       event.setLastError(null);
 
     } catch (BusinessException be) {
-      // business outcome: treat as processed (handler should mark order REJECTED)
+      // business outcome: treat as processed
       event.setStatus(OutboxEventStatus.PROCESSED);
       event.setProcessedAt(Instant.now());
       event.setLastError(null);
@@ -76,11 +76,11 @@ public class OutboxDispatcher {
       event.setStatus(event.getAttempts() >= maxAttempts ? OutboxEventStatus.DEAD : OutboxEventStatus.FAILED);
       event.setLastError("Unexpected processing error");
 
-      // simple backoff: 2^attempts seconds, capped
+      // simple backoff strategy: next attempt after 2^attempts seconds, capped at 5
+      // minutes
       long delaySeconds = Math.min(300, (long) Math.pow(2, Math.min(10, event.getAttempts())));
       event.setAvailableAt(Instant.now().plusSeconds(delaySeconds));
     } finally {
-      // release lock metadata (optional; status is the real lock)
       event.setLockedAt(null);
       event.setLockedBy(null);
       repo.save(event);

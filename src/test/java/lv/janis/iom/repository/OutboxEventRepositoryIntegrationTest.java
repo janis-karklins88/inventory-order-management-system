@@ -3,6 +3,7 @@ package lv.janis.iom.repository;
 import lv.janis.iom.config.JpaConfig;
 import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.enums.OutboxEventStatus;
+import lv.janis.iom.enums.OutboxEventType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -108,7 +109,7 @@ class OutboxEventRepositoryIntegrationTest {
   }
 
   private static OutboxEvent event(OutboxEventStatus status, Instant availableAt, int attempts, Instant lockedAt) {
-    OutboxEvent event = OutboxEvent.pending("EXTERNAL_ORDER_INGESTED", 1L, "{\"orderId\":1}");
+    OutboxEvent event = OutboxEvent.pending(OutboxEventType.EXTERNAL_ORDER_INGESTED, 1L, "{\"orderId\":1}");
     event.setStatus(status);
     event.setAvailableAt(availableAt);
     event.setAttempts(attempts);
