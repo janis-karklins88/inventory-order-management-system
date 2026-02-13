@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ExternalOrderWebhookProperties {
   private String baseUrl = "http://localhost:8081";
   private String rejectedPath = "/webhooks/external-orders/{source}/rejected";
+  private String cancelPath = "/webhooks/external-orders/{source}/cancel-result";
 
   public String getBaseUrl() {
     return baseUrl;
@@ -21,5 +22,13 @@ public class ExternalOrderWebhookProperties {
 
   public void setRejectedPath(String rejectedPath) {
     this.rejectedPath = rejectedPath;
+  }
+
+  public String getCancelPath() {
+    return cancelPath;
+  }
+
+  public void setCancelPath(String cancelPath) {
+    this.cancelPath = cancelPath;
   }
 }

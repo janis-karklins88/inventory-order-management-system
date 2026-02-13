@@ -8,5 +8,10 @@
     "name": "external-order.webhook.rejected-path",
     "type": "java.lang.String",
     "description": "Path template appended to base-url for rejected-order callbacks. Supports {source} placeholder, for example /webhooks/external-orders/{source}/rejected."
+  },
+  {
+    "name": "external-order.webhook.cancel-path",
+    "type": "java.lang.String",
+    "description": "Path template appended to base-url for cancellation-result callbacks. Supports {source} placeholder, for example /webhooks/external-orders/{source}/cancel-result."
   }
 ]}

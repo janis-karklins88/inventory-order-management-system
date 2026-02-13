@@ -2,17 +2,21 @@ package lv.janis.iom.service.facade;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import lv.janis.iom.dto.requests.ExternalOrderCancelRequest;
 import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.dto.requests.ExternalOrderItemRequest;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.entity.Product;
+import lv.janis.iom.enums.ExternalOrderCancelResult;
 import lv.janis.iom.enums.ExternalOrderSource;
+import lv.janis.iom.enums.OrderStatus;
 import lv.janis.iom.enums.OutboxEventStatus;
 import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.OutboxEventRepository;
 import lv.janis.iom.repository.ProductRepository;
+import lv.janis.iom.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -47,6 +51,8 @@ class ExternalOrderFacadeTest {
   EntityManager entityManager;
   @Mock
   OutboxEventRepository outboxEventRepository;
+  @Mock
+  OrderService orderService;
 
   @InjectMocks
   ExternalOrderFacade facade;
@@ -128,12 +134,75 @@ class ExternalOrderFacadeTest {
     assertTrue(ex.getMessage().contains("Products not found or deleted"));
   }
 
+  @Test
+  void cancel_cancellableOrder_callsServiceAndCreatesOutbox() {
+    var request = cancelRequest("EXT-2");
+    var order = CustomerOrder.create();
+    setField(order, "id", 88L);
+
+    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-2"))
+        .thenReturn(Optional.of(order));
+    when(orderService.statusCancelled(88L)).thenAnswer(invocation -> {
+      setStatus(order, OrderStatus.CANCELLED);
+      return order;
+    });
+
+    Long id = facade.cancel(request);
+
+    assertEquals(88L, id);
+    verify(orderService).statusCancelled(88L);
+    var eventCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
+    verify(outboxEventRepository).save(eventCaptor.capture());
+    OutboxEvent event = eventCaptor.getValue();
+    assertEquals(OutboxEventType.EXTERNAL_ORDER_CANCEL_RESULT.name(), event.getEventType());
+    assertEquals("{\"result\":\"" + ExternalOrderCancelResult.CANCELLED.name() + "\"}", event.getPayload());
+  }
+
+  @Test
+  void cancel_notCancelableOrder_createsNotCancelableOutboxEvent() {
+    var request = cancelRequest("EXT-3");
+    var order = CustomerOrder.create();
+    setField(order, "id", 89L);
+    setStatus(order, OrderStatus.SHIPPED);
+
+    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-3"))
+        .thenReturn(Optional.of(order));
+
+    Long id = facade.cancel(request);
+
+    assertEquals(89L, id);
+    verify(orderService, never()).statusCancelled(any());
+    var eventCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
+    verify(outboxEventRepository).save(eventCaptor.capture());
+    OutboxEvent event = eventCaptor.getValue();
+    assertEquals(OutboxEventType.EXTERNAL_ORDER_CANCEL_RESULT.name(), event.getEventType());
+    assertEquals("{\"result\":\"" + ExternalOrderCancelResult.NOT_CANCELABLE.name() + "\"}", event.getPayload());
+  }
+
+  @Test
+  void cancel_missingOrder_throws() {
+    var request = cancelRequest("EXT-404");
+
+    when(customerOrderRepository.findBySourceAndExternalOrderId(ExternalOrderSource.WEB_SHOP, "EXT-404"))
+        .thenReturn(Optional.empty());
+
+    var ex = assertThrows(EntityNotFoundException.class, () -> facade.cancel(request));
+    assertTrue(ex.getMessage().contains("externalOrderId EXT-404 not found"));
+  }
+
   private static ExternalOrderIngestRequest request(String externalOrderId, List<ExternalOrderItemRequest> items) {
     var request = new ExternalOrderIngestRequest();
     setField(request, "source", ExternalOrderSource.WEB_SHOP);
     setField(request, "externalOrderId", externalOrderId);
     setField(request, "shippingAddress", "Addr");
     setField(request, "items", items);
+    return request;
+  }
+
+  private static ExternalOrderCancelRequest cancelRequest(String externalOrderId) {
+    var request = new ExternalOrderCancelRequest();
+    setField(request, "source", ExternalOrderSource.WEB_SHOP);
+    setField(request, "externalOrderId", externalOrderId);
     return request;
   }
 
@@ -158,5 +227,9 @@ class ExternalOrderFacadeTest {
     } catch (NoSuchFieldException | IllegalAccessException e) {
       throw new IllegalStateException("Failed to set " + fieldName, e);
     }
+  }
+
+  private static void setStatus(CustomerOrder order, OrderStatus status) {
+    setField(order, "status", status);
   }
 }

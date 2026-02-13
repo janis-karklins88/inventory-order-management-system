@@ -81,6 +81,24 @@ public class OrderControllerTest {
   }
 
   @Test
+  void cancelExternalOrder_returnsAccepted() throws Exception {
+    when(externalOrderFacade.cancel(any())).thenReturn(9L);
+
+    mockMvc.perform(post("/api/orders/external/cancel")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "source":"WEB_SHOP",
+              "externalOrderId":"EXT-9"
+            }
+            """))
+        .andExpect(status().isAccepted())
+        .andExpect(header().string("Location", endsWith("/api/orders/9")))
+        .andExpect(header().string("Link",
+            containsString("/api/orders/external/status?source=WEB_SHOP&externalOrderId=EXT-9")));
+  }
+
+  @Test
   void addItem_returnsOk() throws Exception {
     var order = CustomerOrder.create();
     setId(order, 3L);

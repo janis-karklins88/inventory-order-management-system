@@ -14,9 +14,11 @@ public class OutboxHandlerRegistry {
   private final Map<OutboxEventType, Consumer<OutboxEvent>> handlers = new EnumMap<>(OutboxEventType.class);
 
   public OutboxHandlerRegistry(ExternalOrderOutboxHandler externalOrderHandler,
-      ExternalOrderRejectedHandler externalOrderRejectedHandler) {
+      ExternalOrderRejectedHandler externalOrderRejectedHandler,
+      ExternalOrderCancellationResultHandler externalOrderCancellationResultHandler) {
     handlers.put(OutboxEventType.EXTERNAL_ORDER_INGESTED, externalOrderHandler::handle);
     handlers.put(OutboxEventType.EXTERNAL_ORDER_REJECTED, externalOrderRejectedHandler::handle);
+    handlers.put(OutboxEventType.EXTERNAL_ORDER_CANCEL_RESULT, externalOrderCancellationResultHandler::handle);
   }
 
   public void handle(OutboxEvent event) {

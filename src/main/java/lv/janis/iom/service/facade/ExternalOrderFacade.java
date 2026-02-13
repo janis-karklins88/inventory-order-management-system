@@ -12,15 +12,19 @@ import org.springframework.stereotype.Service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import lv.janis.iom.dto.requests.ExternalOrderCancelRequest;
 import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.entity.OrderItem;
 import lv.janis.iom.entity.OutboxEvent;
 import lv.janis.iom.entity.Product;
+import lv.janis.iom.enums.ExternalOrderCancelResult;
+import lv.janis.iom.enums.OrderStatus;
 import lv.janis.iom.enums.OutboxEventType;
 import lv.janis.iom.repository.CustomerOrderRepository;
 import lv.janis.iom.repository.OutboxEventRepository;
 import lv.janis.iom.repository.ProductRepository;
+import lv.janis.iom.service.OrderService;
 
 @Service
 public class ExternalOrderFacade {
@@ -29,17 +33,20 @@ public class ExternalOrderFacade {
   private final ProductRepository productRepository;
   private final EntityManager entityManager;
   private final OutboxEventRepository outboxRepo;
+  private final OrderService orderService;
 
   public ExternalOrderFacade(
       CustomerOrderRepository customerOrderRepository,
       ProductRepository productRepository,
       EntityManager entityManager,
-      OutboxEventRepository outboxRepo) {
+      OutboxEventRepository outboxRepo,
+      OrderService orderService) {
 
     this.customerOrderRepository = customerOrderRepository;
     this.productRepository = productRepository;
     this.entityManager = entityManager;
     this.outboxRepo = outboxRepo;
+    this.orderService = orderService;
   }
 
   @Transactional
@@ -79,6 +86,37 @@ public class ExternalOrderFacade {
 
     return orderId;
 
+  }
+
+  @Transactional
+  public Long cancel(ExternalOrderCancelRequest request) {
+    var order = customerOrderRepository
+        .findBySourceAndExternalOrderId(request.getSource(), request.getExternalOrderId())
+        .orElseThrow(() -> new EntityNotFoundException(
+            "Order with source " + request.getSource() + " and externalOrderId "
+                + request.getExternalOrderId() + " not found"));
+
+    ExternalOrderCancelResult result = cancelResult(order);
+
+    outboxRepo.save(OutboxEvent.pending(
+        OutboxEventType.EXTERNAL_ORDER_CANCEL_RESULT,
+        order.getId(),
+        "{\"result\":\"" + result.name() + "\"}"));
+
+    return order.getId();
+  }
+
+  private ExternalOrderCancelResult cancelResult(CustomerOrder order) {
+    if (order.getStatus() == OrderStatus.CANCELLED) {
+      return ExternalOrderCancelResult.CANCELLED;
+    }
+
+    if (order.getStatus() == OrderStatus.CREATED || order.getStatus() == OrderStatus.PROCESSING) {
+      orderService.statusCancelled(order.getId());
+      return ExternalOrderCancelResult.CANCELLED;
+    }
+
+    return ExternalOrderCancelResult.NOT_CANCELABLE;
   }
 
   private CustomerOrder buildOrder(ExternalOrderIngestRequest request) {

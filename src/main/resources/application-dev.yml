@@ -21,3 +21,4 @@ external-order:
   webhook:
     base-url: https://your-callback-host.com
     rejected-path: /webhooks/external-orders/{source}/rejected
+    cancel-path: /webhooks/external-orders/{source}/cancel-result

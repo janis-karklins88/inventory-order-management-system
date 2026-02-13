@@ -28,6 +28,7 @@ import org.springdoc.core.annotations.ParameterObject;
 
 import jakarta.validation.Valid;
 import lv.janis.iom.dto.filters.CustomerOrderFilter;
+import lv.janis.iom.dto.requests.ExternalOrderCancelRequest;
 import lv.janis.iom.dto.requests.ExternalOrderIngestRequest;
 import lv.janis.iom.dto.requests.OrderItemAddRequest;
 import lv.janis.iom.dto.requests.OrderReturnRequest;
@@ -74,6 +75,37 @@ public class OrderController {
         public ResponseEntity<Void> createExternalOrder(
                         @Valid @RequestBody ExternalOrderIngestRequest request) {
                 Long orderId = externalOrderFacade.ingest(request);
+
+                URI location = ServletUriComponentsBuilder
+                                .fromCurrentContextPath()
+                                .path("/api/orders/{id}")
+                                .buildAndExpand(orderId)
+                                .toUri();
+
+                URI statusLocation = ServletUriComponentsBuilder
+                                .fromCurrentContextPath()
+                                .path("/api/orders/external/status")
+                                .queryParam("source", request.getSource())
+                                .queryParam("externalOrderId", request.getExternalOrderId())
+                                .build()
+                                .toUri();
+
+                return ResponseEntity.accepted()
+                                .location(location)
+                                .header("Link", "<" + statusLocation + ">; rel=\"status\"")
+                                .build();
+        }
+
+        @Operation(summary = "Cancel external order", description = "Requests cancellation by (source, externalOrderId) and notifies source via webhook.")
+        @ApiResponses({
+                        @ApiResponse(responseCode = "202", description = "Cancellation request accepted"),
+                        @ApiResponse(responseCode = "404", description = "Order not found for (source, externalOrderId)"),
+                        @ApiResponse(responseCode = "400", description = "Invalid request")
+        })
+        @PostMapping("/external/cancel")
+        public ResponseEntity<Void> cancelExternalOrder(
+                        @Valid @RequestBody ExternalOrderCancelRequest request) {
+                Long orderId = externalOrderFacade.cancel(request);
 
                 URI location = ServletUriComponentsBuilder
                                 .fromCurrentContextPath()
