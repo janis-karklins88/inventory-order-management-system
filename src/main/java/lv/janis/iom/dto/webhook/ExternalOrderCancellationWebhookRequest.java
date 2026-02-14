@@ -1,15 +1,16 @@
 package lv.janis.iom.dto.webhook;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lv.janis.iom.entity.CustomerOrder;
 import lv.janis.iom.enums.ExternalOrderCancelResult;
 
 public record ExternalOrderCancellationWebhookRequest(
-    Long orderId,
-    String source,
-    String externalOrderId,
-    String status,
-    String result,
-    String message) {
+    @Schema(description = "Internal order id", example = "1001") Long orderId,
+    @Schema(description = "External source", example = "WEB_SHOP") String source,
+    @Schema(description = "External order id from source system", example = "EXT-100023") String externalOrderId,
+    @Schema(description = "Current order status after cancel attempt", example = "CANCELLED") String status,
+    @Schema(description = "Cancellation processing outcome", example = "CANCELLED") String result,
+    @Schema(description = "Outcome details when cancellation is not possible", example = "Order cannot be cancelled in status SHIPPED") String message) {
 
   public static ExternalOrderCancellationWebhookRequest from(CustomerOrder order, ExternalOrderCancelResult result) {
     String message = null;

@@ -21,6 +21,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.lang.NonNull;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -98,12 +101,21 @@ public class OrderController {
 
         @Operation(summary = "Cancel external order", description = "Requests cancellation by (source, externalOrderId) and notifies source via webhook.")
         @ApiResponses({
-                        @ApiResponse(responseCode = "202", description = "Cancellation request accepted"),
+                        @ApiResponse(responseCode = "202", description = "Cancellation request accepted", headers = {
+                                        @Header(name = "Location", description = "Absolute URL of the internal order resource"),
+                                        @Header(name = "Link", description = "Status endpoint for polling, for example </api/orders/external/status?source=WEB_SHOP&externalOrderId=EXT-9>; rel=\"status\"")
+                        }),
                         @ApiResponse(responseCode = "404", description = "Order not found for (source, externalOrderId)"),
                         @ApiResponse(responseCode = "400", description = "Invalid request")
         })
         @PostMapping("/external/cancel")
         public ResponseEntity<Void> cancelExternalOrder(
+                        @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "External cancel request", required = true, content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                        {
+                                          "source": "WEB_SHOP",
+                                          "externalOrderId": "EXT-9"
+                                        }
+                                        """)))
                         @Valid @RequestBody ExternalOrderCancelRequest request) {
                 Long orderId = externalOrderFacade.cancel(request);
 
