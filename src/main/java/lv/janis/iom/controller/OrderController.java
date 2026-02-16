@@ -22,8 +22,6 @@ import org.springframework.lang.NonNull;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -110,12 +108,6 @@ public class OrderController {
         })
         @PostMapping("/external/cancel")
         public ResponseEntity<Void> cancelExternalOrder(
-                        @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "External cancel request", required = true, content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
-                                        {
-                                          "source": "WEB_SHOP",
-                                          "externalOrderId": "EXT-9"
-                                        }
-                                        """)))
                         @Valid @RequestBody ExternalOrderCancelRequest request) {
                 Long orderId = externalOrderFacade.cancel(request);
 
